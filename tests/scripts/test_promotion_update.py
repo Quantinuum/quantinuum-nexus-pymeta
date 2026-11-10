@@ -8,7 +8,7 @@ import tomllib
 from unittest.mock import Mock, patch
 
 from ghapi.core import APIError
-import quarterly_release as release
+import release_series as release
 
 
 class TestPromotionUpdate:
@@ -33,10 +33,12 @@ class TestPromotionUpdate:
             self.git(root, "config", key, value)
 
     def body(self, tag):
-        return f"Promote the exact dependency pins and lockfile from {tag}.\n\nThis quarterly release may contain breaking changes.\n\nRelease-As: {self.target}"
+        return f"Promote the exact dependency pins and lockfile from {tag}.\n\nThis release may contain breaking changes.\n\nRelease-As: {self.target}"
 
     @pytest.fixture(autouse=True)
-    def setup_repository(self, tmp_path, monkeypatch):
+    def setup_repository(self, tmp_path, monkeypatch, request):
+        self.target = getattr(request, "param", self.target)
+        self.branch = f"promote-{self.target}"
         # Hook-exported repository variables must not redirect these temporary Git operations.
         local_variables = subprocess.check_output(
             ["git", "rev-parse", "--local-env-vars"], text=True
@@ -224,6 +226,23 @@ class TestPromotionUpdate:
         )
         self.api.pulls.update.assert_not_called()
 
+    @pytest.mark.parametrize(
+        "setup_repository", ["2026.5.0", "2026.12.0", "2027.1.0"], indirect=True
+    )
+    def test_promotes_higher_series_and_new_year_with_exact_candidate(self):
+        self.promote(2)
+        candidate = f"v{self.target}rc2"
+        assert json.loads(self.read_remote(".github/stable-candidate.json")) == {
+            "version": self.target,
+            "tag": candidate,
+            "sha": self.candidates[candidate],
+        }
+        release.verify_candidate_files(
+            self.read_remote("pyproject.toml"),
+            self.read_remote("uv.lock"),
+            *self.metadata[candidate],
+        )
+
     @pytest.mark.parametrize("retry_counter", [1, 2])
     def test_retry_after_pr_creation_failure_recovers_the_pushed_branch(
         self, retry_counter, monkeypatch
@@ -294,7 +313,7 @@ class TestPromotionUpdate:
         self.git(seed, "commit", "-m", "Invalid candidate")
         self.git(seed, "push", "origin", self.branch)
         head = self.remote_head()
-        with pytest.raises(ValueError, match="valid candidate for this quarter"):
+        with pytest.raises(ValueError, match="valid candidate for this series"):
             self.promote(1)
         assert self.remote_head() == head
         self.api.pulls.create.assert_not_called()

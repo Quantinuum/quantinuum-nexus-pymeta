@@ -51,7 +51,7 @@ def beta_state(api: GhApi):
     sha = api.git.get_ref(ref="heads/next")["object"]["sha"]
     config = json.loads(read_file(api, ".github/preview.json", sha))
     target = config["target"]
-    if config["channel"] != "beta" or not re.fullmatch(r"20\d{2}\.[1-4]\.0", target):
+    if config["channel"] != "beta" or not re.fullmatch(r"20\d{2}\.[1-9]\d*\.0", target):
         return None
     tags = api.git.list_matching_refs(ref=f"tags/v{target}")
     if any(
@@ -136,7 +136,7 @@ def merge_updates(run: dict, api: GhApi, release_bot: str, repository: str):
                     continue
             elif stable_frozen(api, pr["base"]["sha"], package_version(base)):
                 print(
-                    "Dependency updates are frozen while the quarterly release is being promoted."
+                    "Dependency updates are frozen while the release is being promoted."
                 )
                 continue
             eligible = dependency_update_allowed(base, head, is_next)

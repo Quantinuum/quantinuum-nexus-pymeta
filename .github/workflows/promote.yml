@@ -1,4 +1,4 @@
-name: Promote quarterly RC
+name: Promote release candidate
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: promote-quarterly-release
+  group: promote-release-series
   cancel-in-progress: false
 
 jobs:
@@ -39,8 +39,8 @@ jobs:
       - uses: astral-sh/setup-uv@v9
         with:
           version: '0.13.5'
-      - name: Open or update the quarterly promotion PR
+      - name: Open or update the release series promotion PR
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
           CANDIDATE: ${{ inputs.candidate }}
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/quarterly_release.py promote "$CANDIDATE"
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py promote "$CANDIDATE"

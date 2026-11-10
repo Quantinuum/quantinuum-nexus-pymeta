@@ -1,4 +1,4 @@
-"""Create quarterly previews or prepare a stable release from a published RC."""
+"""Create release series previews or prepare a stable release from a published RC."""
 
 import argparse
 import json
@@ -13,7 +13,7 @@ from ghapi.core import APIError
 from github_api import all_items, create_client, set_draft
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = re.compile(r"(20\d{2})\.([1-4])\.0(?:(b|rc)([1-9]\d*))?")
+VERSION = re.compile(r"(20\d{2})\.([1-9]\d*)\.0(?:(b|rc)([1-9]\d*))?")
 
 
 def command(*arguments: str) -> str:
@@ -23,9 +23,9 @@ def command(*arguments: str) -> str:
 def next_preview(target: str, channel: str, tags: list[str]) -> str:
     match = VERSION.fullmatch(target)
     if not match or match[3] or channel not in ("beta", "rc"):
-        raise ValueError("Choose a YEAR.QUARTER.0 target and beta or rc channel")
+        raise ValueError("Choose a YEAR.SERIES.0 target and beta or rc channel")
     if f"v{target}" in tags:
-        raise ValueError("This quarter has already been released")
+        raise ValueError("This series has already been released")
     suffix = "b" if channel == "beta" else "rc"
     previews = [VERSION.fullmatch(tag.removeprefix("v")) for tag in tags]
     previews = [item for item in previews if item and item[0].startswith(target)]
@@ -37,7 +37,7 @@ def next_preview(target: str, channel: str, tags: list[str]) -> str:
 
 def stamp(project_text: str, lock_text: str, version: str) -> tuple[str, str]:
     if not VERSION.fullmatch(version):
-        raise ValueError("Invalid quarterly release version")
+        raise ValueError("Invalid release version")
     project = tomllib.loads(project_text)["project"]
     for requirement in project["dependencies"]:
         if not re.fullmatch(r"[A-Za-z0-9_.-]+==[^\s*;]+", requirement):
@@ -81,7 +81,31 @@ def commit(message: str):
     )
 
 
-def preview():
+def preview_needed(target: str, channel: str, source: str, tags: list[str]) -> bool:
+    suffix = "b" if channel == "beta" else "rc"
+    candidates = [
+        tag
+        for tag in tags
+        if re.fullmatch(rf"v{re.escape(target + suffix)}[1-9]\d*", tag)
+    ]
+    if not candidates:
+        return True
+    latest = max(candidates, key=lambda tag: int(tag.rsplit(suffix, 1)[1]))
+    message = command("git", "show", "-s", "--format=%B", f"{latest}^{{}}")
+    previous = re.findall(r"^Preview-Source: ([0-9a-f]{40})$", message, re.M)
+    if len(previous) != 1:
+        raise ValueError("The latest preview must identify one source commit")
+    baseline = previous[0]
+    if command("git", "merge-base", baseline, source) != baseline:
+        raise ValueError("The latest preview source is not an ancestor of next")
+    messages = command("git", "log", "--format=%B%x00", f"{baseline}..{source}")
+    return any(
+        re.match(r"(?:fix|feat)(?:\([^\n()]+\))?!?: .+", message.lstrip("\n"))
+        for message in messages.split("\0")
+    )
+
+
+def preview(force: bool = False):
     config = json.loads((ROOT / ".github/preview.json").read_text())
     target, channel = config["target"], config["channel"]
     source = command("git", "rev-parse", "HEAD")
@@ -99,6 +123,9 @@ def preview():
             if f"Preview-Source: {source}" in message.splitlines():
                 publish_preview(tag, source)
                 return
+    if not force and not preview_needed(target, channel, source, tags):
+        print("Skipping preview: no fix or feat commits since the last preview")
+        return
     write_version(version)
     command("git", "add", "pyproject.toml", "uv.lock")
     commit(f"chore: prepare {version}\n\nPreview-Source: {source}")
@@ -124,7 +151,7 @@ def publish_preview(tag: str, source: str):
         prerelease=True,
         make_latest="false",
         name=tag,
-        body=f"Quarterly preview. Source commit: `{source}`.\n\n"
+        body=f"Release preview. Source commit: `{source}`.\n\n"
         "PyPI publication follows successful installation checks on all supported platforms.",
     )
 
@@ -166,9 +193,9 @@ def verify_promotion():
     if candidate["version"] != version or not re.fullmatch(
         r"[0-9a-f]{40}", candidate["sha"]
     ):
-        raise ValueError("Quarterly release must identify its selected RC")
+        raise ValueError("Release must identify its selected RC")
     if not re.fullmatch(rf"v{re.escape(version)}rc[1-9]\d*", candidate["tag"]):
-        raise ValueError("Candidate tag does not match the quarterly release")
+        raise ValueError("Candidate tag does not match the release")
     sha = command("git", "rev-parse", f"{candidate['tag']}^{{commit}}")
     if sha != candidate["sha"]:
         raise ValueError("The RC tag has changed since promotion")
@@ -197,7 +224,7 @@ def promotion_needs_commit(
     old_tag = re.fullmatch(rf"v{re.escape(target)}rc([1-9]\d*)", previous["tag"])
     if previous["version"] != target or not old_tag:
         raise ValueError(
-            "The existing promotion branch does not contain a valid candidate for this quarter"
+            "The existing promotion branch does not contain a valid candidate for this series"
         )
     if int(tag.rsplit("rc", 1)[1]) < int(old_tag[1]):
         raise ValueError("Cannot replace the selected candidate with an older RC")
@@ -243,12 +270,12 @@ def update_promotion(
     if needs_commit:
         command("git", "switch", "--detach", head)
         write_promotion(target, tag, sha, project, lock)
-        commit(f"feat: update quarterly release {target} to {tag}\n\n{body}")
+        commit(f"feat: update release {target} to {tag}\n\n{body}")
         # Append to the reviewed branch; a concurrent push is rejected by Git.
         command("git", "push", "origin", f"HEAD:refs/heads/{branch}")
         head = command("git", "rev-parse", "HEAD")
     api.pulls.update(
-        pull_number=number, title=f"feat: prepare quarterly release {target}", body=body
+        pull_number=number, title=f"feat: prepare release {target}", body=body
     )
     for review in all_items(api.pulls.list_reviews, pull_number=number):
         if review["state"] == "APPROVED" and review["commit_id"] != head:
@@ -272,7 +299,7 @@ def update_promotion(
 
 
 def promote(tag: str):
-    if not re.fullmatch(r"v20\d{2}\.[1-4]\.0rc[1-9]\d*", tag):
+    if not re.fullmatch(r"v20\d{2}\.[1-9]\d*\.0rc[1-9]\d*", tag):
         raise ValueError("Promotion requires an RC tag")
     command("git", "fetch", "origin", "--tags")
     sha = command("git", "rev-parse", f"{tag}^{{commit}}")
@@ -284,7 +311,7 @@ def promote(tag: str):
     target = validate_candidate(tag, release, runs["workflow_runs"], sha)
     stable = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
     if tuple(map(int, target.split("."))) <= tuple(map(int, stable.split("."))):
-        raise ValueError("The quarterly target must be newer than main")
+        raise ValueError("The release series target must be newer than main")
     branch = f"promote-{target}"
     project = command("git", "show", f"{sha}:pyproject.toml") + "\n"
     lock = command("git", "show", f"{sha}:uv.lock") + "\n"
@@ -292,7 +319,7 @@ def promote(tag: str):
         raise ValueError("The RC tag must match its package version")
     body = (
         f"Promote the exact dependency pins and lockfile from {tag}.\n\n"
-        "This quarterly release may contain breaking changes.\n\n"
+        "This release may contain breaking changes.\n\n"
         f"Release-As: {target}"
     )
     owner = os.environ["GITHUB_REPOSITORY"].split("/", 1)[0]
@@ -315,12 +342,12 @@ def promote(tag: str):
         needs_commit = True
     if needs_commit:
         write_promotion(target, tag, sha, project, lock)
-        commit(f"feat: prepare quarterly release {target}\n\n{body}")
+        commit(f"feat: prepare release {target}\n\n{body}")
     command("git", "push", "origin", f"HEAD:refs/heads/{branch}")
     created = api.pulls.create(
         head=branch,
         base="main",
-        title=f"feat: prepare quarterly release {target}",
+        title=f"feat: prepare release {target}",
         body=body,
     )
     print(created["html_url"])
@@ -329,12 +356,12 @@ def promote(tag: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="action", required=True)
-    subparsers.add_parser("preview")
+    subparsers.add_parser("preview").add_argument("--force", action="store_true")
     subparsers.add_parser("promote").add_argument("tag")
     subparsers.add_parser("verify-promotion")
     args = parser.parse_args()
     if args.action == "preview":
-        preview()
+        preview(force=args.force or os.environ.get("PREVIEW_FORCE") == "true")
     elif args.action == "promote":
         promote(args.tag)
     else:

@@ -74,7 +74,7 @@ jobs:
           with open('pyproject.toml', 'rb') as source:
               assert 'v' + tomllib.load(source)['project']['version'] == os.environ['TAG']
           PY
-          python scripts/uv_pypi.py run --locked --only-group automation python scripts/quarterly_release.py verify-promotion
+          python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py verify-promotion
           python scripts/uv_pypi.py lock --check
           python scripts/uv_pypi.py build
       - name: Publish using PyPI trusted publishing

@@ -190,7 +190,7 @@ def test_accepts_stable_minor_and_coordinated_updates():
     )
 
 
-def test_freezes_dependency_updates_during_quarterly_promotion():
+def test_freezes_dependency_updates_during_series_promotion():
     assert not simulate(candidate={"version": "2026.1.0"}).merges
     assert simulate(candidate={"version": "2026.1.0"}, stable_tag=True).merges
     assert simulate(candidate={"version": "2025.4.0"}).merges
@@ -226,7 +226,8 @@ def test_reuses_only_an_approval_for_the_current_commit(review_sha, new_approval
         {"config_sequence": [{"target": "2026.2.0", "channel": "rc"}]},
         {"tags": ["refs/tags/v2026.2.0rc1"]},
         {"tags": ["refs/tags/v2026.2.0"]},
-        {"config_sequence": [{"target": "2026.5.0", "channel": "beta"}]},
+        {"config_sequence": [{"target": "2026.0.0", "channel": "beta"}]},
+        {"config_sequence": [{"target": "2026.01.0", "channel": "beta"}]},
         {"tested_base": "older-base"},
         {"conclusion": "failure"},
         {"event": "push"},
@@ -240,6 +241,16 @@ def test_reuses_only_an_approval_for_the_current_commit(review_sha, new_approval
 def test_next_rejects_ineligible_updates_without_approval(options):
     api = simulate("next", **options)
     assert not api.merges and not api.approvals
+
+
+@pytest.mark.parametrize("target", ["2026.5.0", "2026.12.0", "2027.1.0"])
+def test_next_supports_any_positive_series_and_preserves_rc_freeze(target):
+    config = [{"target": target, "channel": "beta"}]
+    api = simulate("next", config_sequence=config)
+    assert len(api.merges) == len(api.approvals) == 1
+    for tag in (f"refs/tags/v{target}rc1", f"refs/tags/v{target}"):
+        api = simulate("next", config_sequence=config, tags=[tag])
+        assert not api.merges and not api.approvals
 
 
 @pytest.mark.parametrize(
@@ -340,6 +351,20 @@ def test_release_bot_can_merge_only_the_initial_or_patch_release(
         manifest=manifest,
     )
     assert bool(api.merges) == allowed
+
+
+@pytest.mark.parametrize(
+    "before,after,allowed",
+    [
+        ("2026.12.0", "2026.12.1", True),
+        ("2026.12.1", "2026.13.0", False),
+        ("2026.12.1", "2027.1.0", False),
+    ],
+)
+def test_patch_automation_keeps_the_same_year_and_series(before, after, allowed):
+    base = BASE.replace('version = "2026.1.0"', f'version = "{before}"')
+    head = BASE.replace('version = "2026.1.0"', f'version = "{after}"')
+    assert auto_merge.release_update_allowed(base, head, {".": before}) == allowed
 
 
 def test_non_404_api_failures_are_not_treated_as_missing_candidate_files():

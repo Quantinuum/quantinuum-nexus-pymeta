@@ -1,4 +1,4 @@
-name: Quarterly preview
+name: Release preview
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: quarterly-preview
+  group: release-preview
   cancel-in-progress: false
 
 jobs:
@@ -36,4 +36,5 @@ jobs:
       - name: Create the next beta or RC
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/quarterly_release.py preview
+          PREVIEW_FORCE: ${{ github.event_name == 'workflow_dispatch' }}
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py preview

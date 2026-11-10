@@ -1,9 +1,9 @@
-"""Validate quarterly version sequencing, RC promotion, and dependency preservation."""
+"""Validate release series version sequencing, RC promotion, and dependency preservation."""
 
 import pytest
 import tomllib
 from unittest.mock import patch
-import quarterly_release as release
+import release_series as release
 
 
 class TestPreview:
@@ -28,13 +28,25 @@ class TestPreview:
 
     def test_invalid_targets_and_channels_are_rejected(self):
         for target, channel in [
-            ("2026.5.0", "beta"),
+            ("2026.0.0", "beta"),
+            ("2026.01.0", "beta"),
+            ("2026.-1.0", "beta"),
             ("2026.2.1", "rc"),
             ("2026.2.0b1", "beta"),
             ("2026.2.0", "nightly"),
         ]:
             with pytest.raises(ValueError):
                 release.next_preview(target, channel, [])
+
+    @pytest.mark.parametrize("target", ["2026.5.0", "2026.12.0", "2027.1.0"])
+    def test_series_have_no_annual_limit_and_isolate_preview_numbers(self, target):
+        tags = ["v2026.1.0b99", "v2026.2.0rc9", f"v{target}b2"]
+        assert release.next_preview(target, "beta", tags) == f"{target}b3"
+        assert release.next_preview(target, "rc", tags) == f"{target}rc1"
+        with pytest.raises(ValueError, match="freeze"):
+            release.next_preview(target, "beta", tags + [f"v{target}rc1"])
+        with pytest.raises(ValueError, match="already been released"):
+            release.next_preview(target, "rc", tags + [f"v{target}"])
 
     def test_retry_reuses_a_tag_for_the_same_source_commit(self):
         with (
