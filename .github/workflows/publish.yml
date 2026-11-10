@@ -1,0 +1,81 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag; for previews also select this tag as the workflow ref
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.release.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v9
+        with:
+          version: '0.13.5'
+      - name: Verify the release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/verify_release.py
+
+  test:
+    needs: verify
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.verify.outputs.sha }}
+
+  publish:
+    needs: [verify, test]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v9
+        with:
+          version: '0.13.5'
+      - name: Verify version and build
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          python - <<'PY'
+          import os, tomllib
+          with open('pyproject.toml', 'rb') as source:
+              assert 'v' + tomllib.load(source)['project']['version'] == os.environ['TAG']
+          PY
+          python scripts/uv_pypi.py run --locked --only-group automation python scripts/quarterly_release.py verify-promotion
+          python scripts/uv_pypi.py lock --check
+          python scripts/uv_pypi.py build
+      - name: Publish using PyPI trusted publishing
+        run: python scripts/uv_pypi.py publish --trusted-publishing always --check-url https://pypi.org/simple

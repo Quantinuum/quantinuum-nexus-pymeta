@@ -1,0 +1,65 @@
+"""Build and install both distributions in isolated environments."""
+
+import argparse
+import importlib.metadata
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import tomllib
+
+from uv_pypi import run_uv
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def check_installed() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    distribution = importlib.metadata.distribution(project["name"])
+    assert distribution.version == project["version"]
+    assert set(distribution.metadata["Requires-Python"].split(",")) == set(
+        project["requires-python"].split(",")
+    )
+    expected = {requirement.lower() for requirement in project["dependencies"]}
+    actual = {requirement.lower() for requirement in distribution.requires or []}
+    assert actual == expected, (actual, expected)
+    for requirement in project["dependencies"]:
+        name, version = requirement.split("==")
+        assert "*" not in version, requirement
+        installed = importlib.metadata.version(name)
+        assert installed == version, (name, installed, version)
+    print(f"Verified {project['name']}=={distribution.version} on {sys.version}")
+
+
+def run(*command: str) -> None:
+    if command[0] == "uv":
+        run_uv(*command[1:])
+    else:
+        subprocess.run(command, cwd=ROOT, check=True)
+
+
+def check_distributions() -> None:
+    run("uv", "build", "--clear")
+    artifacts = sorted((ROOT / "dist").glob("*.whl")) + sorted(
+        (ROOT / "dist").glob("*.tar.gz")
+    )
+    assert len(artifacts) == 2, artifacts
+    for artifact in artifacts:
+        with tempfile.TemporaryDirectory(prefix="nexus-install-") as temporary:
+            environment = Path(temporary) / "venv"
+            python = environment / (
+                "Scripts/python.exe" if sys.platform == "win32" else "bin/python"
+            )
+            run("uv", "venv", "--python", sys.executable, str(environment))
+            run("uv", "pip", "install", "--python", str(python), str(artifact))
+            run("uv", "pip", "check", "--python", str(python))
+            run(str(python), str(Path(__file__).resolve()), "--check")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true")
+    if parser.parse_args().check:
+        check_installed()
+    else:
+        check_distributions()

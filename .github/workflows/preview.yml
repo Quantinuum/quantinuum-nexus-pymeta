@@ -1,0 +1,39 @@
+name: Quarterly preview
+
+on:
+  push:
+    branches: [next]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quarterly-preview
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    if: github.ref == 'refs/heads/next' && vars.RELEASE_APP_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: token
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ steps.token.outputs.token }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v9
+        with:
+          version: '0.13.5'
+      - name: Create the next beta or RC
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/quarterly_release.py preview

@@ -1,0 +1,57 @@
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    target-branch: main
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: fix
+      include: scope
+    allow:
+      - dependency-name: guppylang
+      - dependency-name: guppyft
+      - dependency-name: guppyalgos
+      - dependency-name: selene-sim
+      - dependency-name: pytket
+      - dependency-name: qnexus
+    groups:
+      tools:
+        patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: guppyft
+        update-types: ['version-update:semver-minor']
+      - dependency-name: guppyalgos
+        update-types: ['version-update:semver-minor']
+      - dependency-name: selene-sim
+        update-types: ['version-update:semver-minor']
+      - dependency-name: qnexus
+        update-types: ['version-update:semver-minor']
+  - package-ecosystem: uv
+    directory: /
+    target-branch: next
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: feat
+      include: scope
+    allow:
+      - dependency-name: guppylang
+      - dependency-name: guppyft
+      - dependency-name: guppyalgos
+      - dependency-name: selene-sim
+      - dependency-name: pytket
+      - dependency-name: qnexus
+    groups:
+      tools-next:
+        patterns: ['*']
+        update-types: [major, minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci

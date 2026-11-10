@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main, next]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit to test
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  python-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.matrix.outputs.versions }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - id: matrix
+        run: echo "versions=$(python scripts/python_matrix.py)" >> "$GITHUB_OUTPUT"
+
+  install:
+    needs: python-versions
+    name: Install (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-26-intel, windows-latest]
+        python: ${{ fromJSON(needs.python-versions.outputs.versions) }}
+        exclude:
+          - os: macos-26-intel
+            python: '3.14'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: astral-sh/setup-uv@v9
+        with:
+          version: '0.13.5'
+      - name: Verify lockfile
+        run: python scripts/uv_pypi.py lock --check
+      - name: Test repository scripts
+        run: python scripts/tasks.py scripts ${{ matrix.python }}
+      - name: Test package installation
+        run: python scripts/tasks.py package ${{ matrix.python }}
+
+  required:
+    name: Installation checks
+    if: always()
+    needs: [python-versions, install]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the whole matrix to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python - <<'PY'
+          import json, os
+          results = json.loads(os.environ['RESULTS'])
+          assert all(job['result'] == 'success' for job in results.values()), results
+          PY
