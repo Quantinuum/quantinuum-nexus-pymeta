@@ -4,8 +4,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from python_matrix import python_versions
 import tasks
+from python_matrix import python_versions
 
 
 @pytest.mark.parametrize(

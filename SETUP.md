@@ -34,9 +34,23 @@ An ordinary `pytest` run selects `tests/scripts/`. Use `pytest tests/package` to
 select package tests or `pytest tests` to run both suites on the current Python.
 The `just` commands run the selected suite across supported Python versions.
 
-`just setup` installs a Git pre-commit hook in this checkout. On commits that
-change Python code or relevant configuration, the hook runs pytest on every
-supported Python minor, including approval, merge, and publication policy tests.
+`just setup` installs a Git pre-commit hook in this checkout. The hooks run
+Ruff's linter with safe automatic fixes, format Python files, trim trailing
+whitespace, ensure a single final newline, and normalize text line endings to
+LF. Markdown hard line breaks are preserved. Hook tool versions are pinned in
+`.pre-commit-config.yaml`; pre-commit installs them in isolated environments.
+If a hook modifies files, review and stage the changes before committing again.
+
+To lint or format every tracked Python file explicitly, run:
+
+```sh
+just hooks ruff-check --all-files
+just hooks ruff-format --all-files
+```
+
+On commits that change Python code or relevant configuration, the hook runs
+pytest on every supported Python minor, including approval, merge, and
+publication policy tests.
 Dependency changes also check the lockfile. Documentation-only commits skip these
 tests. The Python suite includes temporary Git repositories, so a full commit
 check can take about a minute. Distribution installation tests run in CI and

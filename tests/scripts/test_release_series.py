@@ -1,8 +1,10 @@
 """Validate release series version sequencing, RC promotion, and dependency preservation."""
 
-import pytest
 import tomllib
 from unittest.mock import patch
+
+import pytest
+
 import release_series as release
 
 
@@ -167,8 +169,9 @@ class TestPromotion:
 
 @pytest.mark.parametrize("status", [404, 403, 500, None])
 def test_preview_creates_a_release_only_when_it_is_missing(status):
-    from ghapi.core import APIError
     from unittest.mock import Mock
+
+    from ghapi.core import APIError
 
     api = Mock()
     if status is not None:
@@ -194,15 +197,18 @@ def test_preview_creates_a_release_only_when_it_is_missing(status):
 
 
 def test_preview_requires_an_existing_remote_tag():
-    from ghapi.core import APIError
     from unittest.mock import Mock
+
+    from ghapi.core import APIError
 
     api = Mock()
     api.repos.get_release_by_tag.side_effect = APIError(
         "Missing release", status_code=404
     )
     api.git.get_ref.side_effect = APIError("Missing tag", status_code=404)
-    with patch.object(release, "create_client", return_value=api):
-        with pytest.raises(APIError):
-            release.publish_preview("v2026.2.0b1", "source-sha")
+    with (
+        patch.object(release, "create_client", return_value=api),
+        pytest.raises(APIError),
+    ):
+        release.publish_preview("v2026.2.0b1", "source-sha")
     api.repos.create_release.assert_not_called()

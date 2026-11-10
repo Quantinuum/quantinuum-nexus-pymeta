@@ -4,8 +4,8 @@ import base64
 import json
 
 import httpx2
-from ghapi.core import APIError
 import pytest
+from ghapi.core import APIError
 
 from github_api import all_items, create_client, read_file, set_draft
 

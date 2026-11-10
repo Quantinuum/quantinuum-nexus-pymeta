@@ -2,13 +2,12 @@
 
 import base64
 import json
-from pathlib import Path
 import runpy
+from pathlib import Path
 from types import SimpleNamespace
 
-from ghapi.core import APIError
-
 import pytest
+from ghapi.core import APIError
 
 import auto_merge
 

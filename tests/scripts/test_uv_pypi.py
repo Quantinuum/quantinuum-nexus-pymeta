@@ -2,6 +2,7 @@
 
 import os
 from unittest.mock import patch
+
 from uv_pypi import CONFIG, SOURCE_VARIABLES, run_uv
 
 

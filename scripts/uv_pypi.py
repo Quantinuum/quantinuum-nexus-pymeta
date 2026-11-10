@@ -1,9 +1,9 @@
 """Run uv with this repository's PyPI configuration and no index overrides."""
 
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 CONFIG = Path(__file__).resolve().parents[1] / "uv.toml"
 SOURCE_VARIABLES = (

@@ -2,8 +2,8 @@
 
 import argparse
 import os
-from pathlib import Path
 import tomllib
+from pathlib import Path
 
 from python_matrix import supported_versions
 from uv_pypi import run_uv

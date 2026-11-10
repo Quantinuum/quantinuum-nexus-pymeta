@@ -159,7 +159,9 @@ def test_preview_number_order_is_numeric(repository):
     git("commit", "--allow-empty", "-m", "fix: update SDK")
     source = git("rev-parse", "HEAD")
     git(
-        "commit", "--allow-empty", "-m",
+        "commit",
+        "--allow-empty",
+        "-m",
         f"chore: preview\n\nPreview-Source: {source}",
     )
     git("tag", "v2026.2.0b10")

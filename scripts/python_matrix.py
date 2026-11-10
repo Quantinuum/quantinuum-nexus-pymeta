@@ -1,10 +1,10 @@
 """List the supported CPython minor versions for local tests and CI."""
 
 import json
-from pathlib import Path
 import re
 import tomllib
 import urllib.request
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = "https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json"

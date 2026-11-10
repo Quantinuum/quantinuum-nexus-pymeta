@@ -1,8 +1,8 @@
 """Resolve and validate the release commit used by the publishing workflow."""
 
 import os
-from pathlib import Path
 import re
+from pathlib import Path
 
 from ghapi.core import GhApi
 

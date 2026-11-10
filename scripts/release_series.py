@@ -3,10 +3,10 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import re
 import subprocess
 import tomllib
+from pathlib import Path
 
 from ghapi.core import APIError
 
@@ -43,7 +43,10 @@ def stamp(project_text: str, lock_text: str, version: str) -> tuple[str, str]:
         if not re.fullmatch(r"[A-Za-z0-9_.-]+==[^\s*;]+", requirement):
             raise ValueError("Every runtime dependency must have an exact pin")
     project_text, count = re.subn(
-        r'^version = "[^"\n]+"$', f'version = "{version}"', project_text, flags=re.M
+        r'^version = "[^"\n]+"$',
+        f'version = "{version}"',
+        project_text,
+        flags=re.MULTILINE,
     )
     if count != 1:
         raise ValueError("Expected one project version")
@@ -92,7 +95,7 @@ def preview_needed(target: str, channel: str, source: str, tags: list[str]) -> b
         return True
     latest = max(candidates, key=lambda tag: int(tag.rsplit(suffix, 1)[1]))
     message = command("git", "show", "-s", "--format=%B", f"{latest}^{{}}")
-    previous = re.findall(r"^Preview-Source: ([0-9a-f]{40})$", message, re.M)
+    previous = re.findall(r"^Preview-Source: ([0-9a-f]{40})$", message, re.MULTILINE)
     if len(previous) != 1:
         raise ValueError("The latest preview must identify one source commit")
     baseline = previous[0]

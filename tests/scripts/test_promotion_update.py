@@ -1,13 +1,14 @@
 """Exercise promotion creation, recovery, and updates with Git and a GitHub stub."""
 
-import pytest
 import copy
 import json
 import subprocess
 import tomllib
 from unittest.mock import Mock, patch
 
+import pytest
 from ghapi.core import APIError
+
 import release_series as release
 
 

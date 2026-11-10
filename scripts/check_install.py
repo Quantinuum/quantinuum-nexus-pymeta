@@ -2,11 +2,11 @@
 
 import argparse
 import importlib.metadata
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import tomllib
+from pathlib import Path
 
 from uv_pypi import run_uv
 

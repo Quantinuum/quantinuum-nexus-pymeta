@@ -1,7 +1,7 @@
 """Check the version and release-status gates before PyPI publication."""
 
-from pathlib import Path
 import runpy
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest

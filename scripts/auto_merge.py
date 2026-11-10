@@ -2,15 +2,15 @@
 
 import json
 import os
-from pathlib import Path
 import re
-from ghapi.core import GhApi
-from ghapi.core import APIError
+from pathlib import Path
+
+from ghapi.core import APIError, GhApi
 
 from github_api import all_items, create_client, read_file
 
 TOOLS = ("guppylang", "guppyft", "guppyalgos", "selene-sim", "pytket", "qnexus")
-PROJECT_VERSION = re.compile(r'^version = "(\d+\.\d+\.\d+)"$', re.M)
+PROJECT_VERSION = re.compile(r'^version = "(\d+\.\d+\.\d+)"$', re.MULTILINE)
 
 
 def package_version(text: str):
