@@ -146,7 +146,9 @@ def publish_preview(tag: str, source: str):
         if error.status_code != 404:
             raise
     else:
-        print(f"{tag} already exists; retry its Publish workflow if necessary")
+        print(
+            f"{tag} already exists; retry its Validate and publish workflow if necessary"
+        )
         return
     api.git.get_ref(ref=f"tags/{tag}")
     api.repos.create_release(
@@ -155,7 +157,8 @@ def publish_preview(tag: str, source: str):
         make_latest="false",
         name=tag,
         body=f"Release preview. Source commit: `{source}`.\n\n"
-        "PyPI publication follows successful installation checks on all supported platforms.",
+        "Wheel and source distributions are attached after installation checks on all supported platforms. "
+        "PyPI publication is optional.",
     )
 
 
@@ -168,7 +171,9 @@ def validate_candidate(tag: str, release: dict, runs: list[dict], sha: str):
     if not any(
         run["head_sha"] == sha and run["conclusion"] == "success" for run in runs
     ):
-        raise ValueError("The RC's Publish workflow must succeed before promotion")
+        raise ValueError(
+            "The RC's Validate and publish workflow must succeed before promotion"
+        )
     return f"{match[1]}.{match[2]}.0"
 
 

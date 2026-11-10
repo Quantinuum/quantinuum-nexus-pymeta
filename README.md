@@ -40,7 +40,34 @@ Python 3.15 and later are outside this release's supported range. The pinned
 
 ## Installation
 
-Add the SDK to your uv project using:
+Releases are initially distributed through
+[GitHub Releases](https://github.com/Quantinuum/quantinuum-nexus-sdk/releases).
+Download the wheel (`.whl`) attached to the release you want. In a directory
+containing that single SDK wheel, add it to your uv project using:
+
+```sh
+uv add ./quantinuum_nexus_sdk-*.whl
+```
+
+Or install it into an existing activated virtual environment using:
+
+```sh
+uv pip install ./quantinuum_nexus_sdk-*.whl
+```
+
+Alternatively, use pip:
+
+```sh
+python -m pip install ./quantinuum_nexus_sdk-*.whl
+```
+
+These shell examples expand the wheel filename; you can also pass its exact
+path. Dependencies are resolved from PyPI as usual. A GitHub release is ready
+to install once its wheel and source distribution appear under release assets.
+
+### Installing from PyPI
+
+For releases also published to PyPI, add the SDK to your uv project using:
 
 ```sh
 uv add quantinuum-nexus-sdk
@@ -108,8 +135,7 @@ Stable patches can continue while the next series is in preview.
 
 ### Betas and release candidates
 
-Upcoming release series are offered as opt-in previews on the same PyPI
-project:
+Upcoming release series are offered as opt-in GitHub prereleases:
 
 - **Beta** (`YEAR.SERIES.0bN`): a preview whose component versions can still
   change, including potentially breaking updates. Further previews increment
@@ -120,8 +146,9 @@ project:
 - **Stable** (`YEAR.SERIES.0`): the first stable release in a series, using the
   chosen release candidate's exact direct dependency pins.
 
-To opt in to available prereleases in your uv project, allow preview versions
-when adding or upgrading the SDK:
+To try a preview from GitHub, download and install its wheel as described
+above. For previews also published to PyPI, allow preview versions when adding
+or upgrading the SDK in your uv project:
 
 ```sh
 uv add --upgrade --prerelease allow quantinuum-nexus-sdk

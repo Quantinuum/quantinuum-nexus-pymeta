@@ -19,7 +19,7 @@ def verify_release(tag: str, api: GhApi, event_name: str, workflow_sha: str) -> 
     sha = api.repos.get_commit(ref=tag)["sha"]
     if preview and event_name == "workflow_dispatch" and workflow_sha != sha:
         raise ValueError(
-            "Run preview retries from the release tag so RC promotion can verify the successful Publish run"
+            "Run preview retries from the release tag so RC promotion can verify the successful Validate and publish run"
         )
     return sha
 

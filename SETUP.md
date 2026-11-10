@@ -116,16 +116,39 @@ running the script and package suites separately on each matrix cell.
    bypass. If reviews are required for every PR, a person must approve bot PRs;
    unattended updates need repository rules that permit them after the required
    checks pass.
-4. On PyPI, configure a trusted publisher (or pending publisher for a new
-   project) for `quantinuum-nexus-sdk`, your GitHub owner/repository,
-   workflow `publish.yml`, and environment `pypi`. Create that GitHub environment;
-   leave required reviewers unset for unattended publication. Package name
-   availability and organization ownership must be confirmed before publishing.
+4. Leave the Actions repository variable `PYPI_PUBLISH_ENABLED` unset (or set
+   it to `false`). Releases default to GitHub only; no PyPI account, trusted
+   publisher, or `pypi` environment is needed for this mode.
 5. Push the initial commit or dispatch Release Please. It creates the first
-   release PR; passing CI starts the automated release chain.
+   release PR; after CI and required reviews pass, the release chain creates a
+   GitHub release. **Validate and publish** checks the release commit, runs the
+   full installation matrix, builds the wheel and source distribution, and
+   attaches them to the GitHub release. Confirm both assets are present and
+   the workflow succeeds.
 
-The workflows honor repository protections. No hosted CI run or PyPI publication
-occurs until the repository is pushed and these credentials are configured.
+The workflows honor repository protections. CI runs after the repository is
+pushed; release automation additionally requires the GitHub App configuration.
+
+## Enabling optional PyPI publication
+
+1. Confirm package name availability and Quantinuum ownership on PyPI. Configure
+   a trusted publisher (or pending publisher for a new project) for
+   `quantinuum-nexus-sdk`, GitHub owner `Quantinuum`, repository
+   `quantinuum-nexus-sdk`, workflow filename `publish.yml`, and environment
+   `pypi`.
+2. Create the GitHub environment `pypi`. Leave required reviewers unset for
+   unattended publication, or configure them if publication should require
+   approval.
+3. Set the Actions **repository variable** `PYPI_PUBLISH_ENABLED` to exactly
+   `true`. The build job preserves the wheel and source distribution in an
+   immutable workflow artifact. The optional PyPI job downloads it by its
+   exact ID, requires a matching integrity digest, and uploads those same
+   files using OIDC. No PyPI API token is required.
+
+To publish an existing GitHub release to PyPI after enabling the variable,
+rerun **Validate and publish** with that release tag. For a beta or RC, also
+select the tag as the workflow ref. Setting the variable to `false` or removing
+it disables subsequent PyPI uploads without disabling GitHub releases.
 
 For dependency updates, preview releases, release series promotion, and publication
 retries, see [Maintaining and releasing](MAINTAINING.md).

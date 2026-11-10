@@ -1,4 +1,4 @@
-"""Check the version and release-status gates before PyPI publication."""
+"""Check the version and release-status gates before release publication."""
 
 import runpy
 from pathlib import Path

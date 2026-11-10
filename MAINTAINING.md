@@ -48,12 +48,28 @@ compatibility. Release Please uses patch increments for ordinary commits on
 such as `fix:` and `feat:` for release notes. Release series promotion supplies an
 explicit `Release-As` footer to choose the next calendar version.
 
-Publishing runs on a published GitHub release. It tests the release commit across
-the full matrix again, checks that the tag matches the package version, builds
-the distributions, and publishes through PyPI OIDC. To retry a failed publication,
-dispatch the Publish workflow with its existing release tag.
-For beta or RC retries, select that tag as the workflow ref as well as supplying
-the tag input. Existing PyPI distribution files are skipped on retry.
+The **Validate and publish** workflow runs on a published GitHub release. It
+checks the tag and release commit, tests the full installation matrix again,
+builds the distributions, and attaches the wheel and source archive to the
+GitHub release. GitHub-only publication is the default; it does not require
+PyPI credentials or a `pypi` environment.
+
+To retry a failed publication, dispatch **Validate and publish** with its
+existing release tag. For beta or RC retries, select that tag as the workflow
+ref as well as supplying the tag input. Builds use the release commit timestamp
+for reproducible archive timestamps. Matching existing GitHub assets are reused;
+missing assets are uploaded. A conflicting or incomplete asset causes a failure
+instead of being replaced. Investigate any conflict before retrying; do not
+reuse a version for different package contents.
+
+PyPI uploads run only when the Actions repository variable
+`PYPI_PUBLISH_ENABLED` is exactly `true`, after GitHub asset publication succeeds.
+The build job preserves the distributions in an immutable workflow artifact.
+The PyPI job downloads that artifact by its exact ID, fails on an integrity
+digest mismatch, and publishes those files rather than downloading mutable
+GitHub release assets or rebuilding them. Each rerun attempt uses a separate
+artifact. See [optional PyPI setup](SETUP.md#enabling-optional-pypi-publication)
+before enabling it. Existing matching PyPI distributions are skipped on retry.
 
 ## Release series betas, release candidates, and promotion
 
@@ -110,10 +126,12 @@ Manual requests retain the target, freeze, stale-commit, and retry checks.
 
 The preview workflow stamps the metapackage version into `pyproject.toml` and
 `uv.lock` in a tagged commit without advancing either branch or changing
-dependency versions. It creates a GitHub prerelease, which triggers the Publish
-workflow. That workflow runs the full installation matrix on the tagged commit
-before publishing to the same PyPI project as stable releases. GitHub prerelease
-creation alone does not indicate successful PyPI publication; check Publish.
+dependency versions. It creates a GitHub prerelease, which triggers
+**Validate and publish**. That workflow runs the full
+installation matrix on the tagged commit before attaching its distributions to
+the GitHub prerelease. PyPI upload is optional, as for stable releases. A GitHub
+prerelease announcement alone does not mean its package assets are ready; wait
+for the workflow to succeed.
 Rerunning the preview workflow for the same source commit reuses its tag.
 Queued runs for superseded `next` commits are skipped so an older snapshot
 cannot become the newest preview.
@@ -125,18 +143,20 @@ commits produce `rc2`, `rc3`, etc.; maintenance-only pushes skip publication.
 The tooling prevents returning to beta after an RC
 exists, and stops publishing previews once the final version exists.
 
-Users opt in to a particular preview with an exact version:
+Users opt in by downloading the preview wheel from GitHub Releases and
+installing that file, for example:
 
 ```sh
-python3 scripts/uv_pypi.py pip install quantinuum-nexus-sdk==2026.2.0rc1
+python3 scripts/uv_pypi.py pip install ./quantinuum_nexus_sdk-2026.2.0rc1-py3-none-any.whl
 ```
 
 For the official release:
 
-1. Wait for the RC's Publish workflow to succeed and complete user validation.
+1. Wait for the RC's **Validate and publish** workflow to succeed and complete
+   user validation.
 2. Dispatch **Promote release candidate** from `main`, providing its tag, for example
-   `v2026.2.0rc1`. It rejects betas and RCs without a successful Publish run for
-   that exact commit, and opens a promotion PR with the candidate's exact
+   `v2026.2.0rc1`. It rejects betas and RCs without a successful
+   **Validate and publish** run for that exact commit, and opens a promotion PR with the candidate's exact
    dependency metadata and lockfile, changing only the metapackage version.
    It also records the RC tag and commit used for publication verification.
    Selecting a newer RC updates an existing promotion PR with a new commit,
@@ -159,7 +179,8 @@ For the official release:
 4. Review and merge the Release Please PR for the new series. Both this PR and
    the promotion PR require manual review and merging. The official release
    runs the full matrix again and
-   publishes the stable version with the candidate's exact dependency pins.
+   attaches the stable distributions to the GitHub release with the candidate's
+   exact dependency pins, and optionally uploads them to PyPI.
    Leave other dependency PRs unmerged during promotion; the publisher rejects
    metadata or lockfile changes that differ from the chosen RC.
    Automatic Dependabot merges pause between promotion and stable tag creation.
@@ -173,8 +194,8 @@ date, and allow the release App's approval to satisfy the dependency PR review
 requirement. Additional human or code-owner review requirements still apply;
 the App does not bypass them. The RC freeze and other configuration changes
 require maintainer review. Preview releases never mark themselves
-as GitHub's latest stable release. For a failed PyPI upload, retry **Publish**
-with the existing tag; do not reuse that version for different contents.
+as GitHub's latest stable release. For a failed GitHub or PyPI upload, retry
+**Validate and publish** with the existing tag; do not reuse that version for different contents.
 
 ## Validating changes
 

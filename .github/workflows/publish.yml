@@ -1,4 +1,4 @@
-name: Publish
+name: Validate and publish
 
 on:
   release:
@@ -47,12 +47,13 @@ jobs:
       ref: ${{ needs.verify.outputs.sha }}
 
   publish:
+    name: Publish GitHub release assets
     needs: [verify, test]
     runs-on: ubuntu-latest
-    environment: pypi
+    outputs:
+      artifact_id: ${{ steps.distributions.outputs.artifact-id }}
     permissions:
-      contents: read
-      id-token: write
+      contents: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -76,6 +77,50 @@ jobs:
           PY
           python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py verify-promotion
           python scripts/uv_pypi.py lock --check
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
           python scripts/uv_pypi.py build
+      - name: Attach distributions to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          RELEASE_SHA: ${{ needs.verify.outputs.sha }}
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/publish_release.py
+      - name: Preserve distributions for PyPI
+        if: vars.PYPI_PUBLISH_ENABLED == 'true'
+        id: distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-distributions-${{ github.run_attempt }}
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  pypi:
+    name: Publish to PyPI
+    if: vars.PYPI_PUBLISH_ENABLED == 'true' && needs.publish.outputs.artifact_id != ''
+    needs: [verify, publish]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v9
+        with:
+          version: '0.13.5'
+      - name: Download the verified build distributions
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.publish.outputs.artifact_id }}
+          path: dist
+          digest-mismatch: error
       - name: Publish using PyPI trusted publishing
         run: python scripts/uv_pypi.py publish --trusted-publishing always --check-url https://pypi.org/simple
