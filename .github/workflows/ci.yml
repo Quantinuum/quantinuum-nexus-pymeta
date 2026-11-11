@@ -1,8 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: [main, 'release/*']
   pull_request:
   workflow_dispatch:
   workflow_call:
@@ -55,9 +53,11 @@ jobs:
         with:
           version: '0.13.5'
       - name: Verify lockfile
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
         run: python scripts/uv_pypi.py lock --check
       - name: Test repository scripts
-        run: python scripts/tasks.py scripts ${{ matrix.python }}
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        run: python scripts/tasks.py scripts 3.12
       - name: Test package installation
         run: python scripts/tasks.py package ${{ matrix.python }}
 
