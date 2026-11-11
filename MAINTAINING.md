@@ -118,6 +118,9 @@ tags and explicitly dispatch **Validate and publish** on the tag. The publisher
 verifies the tag, tests the full installation matrix, builds a wheel and source
 distribution, and verifies uploaded assets before publishing the release.
 Older-series patches and previews do not become GitHub's latest stable release.
+Publication jobs share a repository-wide queue so their latest-version checks
+and release publication cannot overlap across tags. Installation checks for
+different tags can run concurrently.
 
 To retry, dispatch **Validate and publish** with the existing tag. For previews,
 select the tag as the workflow ref too, so promotion can find the successful run

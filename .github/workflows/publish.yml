@@ -50,6 +50,10 @@ jobs:
     name: Publish GitHub release assets
     needs: [verify, test]
     runs-on: ubuntu-latest
+    concurrency:
+      group: github-release-publication
+      cancel-in-progress: false
+      queue: max
     outputs:
       artifact_id: ${{ steps.distributions.outputs.artifact-id }}
     permissions:

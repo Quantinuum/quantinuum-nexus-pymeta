@@ -2,6 +2,7 @@
 
 from unittest.mock import Mock, patch
 
+import pytest
 from ghapi.core import APIError
 
 import maintain_releases as maintenance
@@ -24,12 +25,21 @@ def test_dependency_targets_include_main_and_only_the_two_supported_series():
     assert "version-update:semver-major" in stable
 
 
-def test_maintenance_pr_retries_reuse_the_existing_commit(monkeypatch):
+@pytest.mark.parametrize(
+    "merge_base,refresh", [("base", False), ("previous-base", True)]
+)
+def test_maintenance_pr_with_unchanged_contents_refreshes_only_outdated_base(
+    monkeypatch, merge_base, refresh
+):
     monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
     api = Mock(owner="owner")
     api.git.get_ref.side_effect = lambda ref: {
         "object": {"sha": "base" if ref == "heads/main" else "head"}
     }
+    api.repos.compare_commits.return_value = {"merge_base_commit": {"sha": merge_base}}
+    api.git.get_commit.return_value = {"tree": {"sha": "base-tree"}}
+    api.git.create_tree.return_value = {"sha": "new-tree"}
+    api.git.create_commit.return_value = {"sha": "refreshed-head"}
     api.pulls.list.side_effect = lambda page, per_page, **kwargs: (
         [{"html_url": "existing"}] if page == 1 else []
     )
@@ -46,8 +56,17 @@ def test_maintenance_pr_retries_reuse_the_existing_commit(monkeypatch):
             "title",
             "body",
         )
-    api.git.create_commit.assert_not_called()
-    api.git.update_ref.assert_not_called()
+    api.repos.compare_commits.assert_called_once_with(basehead="base...head")
+    if refresh:
+        api.git.create_commit.assert_called_once_with(
+            message="title", tree="new-tree", parents=["head", "base"]
+        )
+        api.git.update_ref.assert_called_once_with(
+            ref="heads/automation/supported-series", sha="refreshed-head", force=False
+        )
+    else:
+        api.git.create_commit.assert_not_called()
+        api.git.update_ref.assert_not_called()
     api.pulls.create.assert_not_called()
 
 

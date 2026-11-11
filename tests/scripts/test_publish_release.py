@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 import runpy
 from pathlib import Path
 from unittest.mock import Mock
@@ -204,3 +205,24 @@ def test_failed_draft_upload_never_publishes_release(publication):
     with pytest.raises(APIError):
         publish_release.publish_assets(api, "v2026.1.1", "verified", directory)
     api.repos.update_release.assert_not_called()
+
+
+def test_publication_job_queues_all_tags_in_one_repository_group():
+    workflow = (
+        Path(__file__).resolve().parents[2] / ".github/workflows/publish.yml"
+    ).read_text()
+    publish_job = workflow.split("\n  publish:\n", 1)[1].split("\n  pypi:\n", 1)[0]
+    concurrency = re.search(
+        r"^    concurrency:\n((?:      [^\n]*\n)+)", publish_job, re.MULTILINE
+    )
+    assert concurrency is not None, "Publication must be serialized across tags"
+    settings = dict(line.strip().split(": ", 1) for line in concurrency[1].splitlines())
+    assert settings["group"] and "${{" not in settings["group"], (
+        "All tags must share the same publication lock"
+    )
+    assert settings["cancel-in-progress"] == "false", (
+        "Publishing a release must not cancel another publication"
+    )
+    assert settings["queue"] == "max", (
+        "Multiple queued releases must not replace each other"
+    )

@@ -84,7 +84,13 @@ def open_files_pr(
                 raise
             return False
 
-    if any(not matches(path, content) for path, content in changed.items()):
+    if any(not matches(path, content) for path, content in changed.items()) or (
+        head != base_sha
+        and api.repos.compare_commits(basehead=f"{base_sha}...{head}")[
+            "merge_base_commit"
+        ]["sha"]
+        != base_sha
+    ):
         tree = api.git.create_tree(
             base_tree=api.git.get_commit(commit_sha=base_sha)["tree"]["sha"],
             tree=[
