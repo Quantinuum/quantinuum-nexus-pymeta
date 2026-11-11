@@ -7,14 +7,13 @@ from pathlib import Path
 from ghapi.core import GhApi
 
 from github_api import all_items, create_client
+from release_policy import published_series
 
 
 def publish_assets(api: GhApi, tag: str, sha: str, directory: Path):
     if api.repos.get_commit(ref=tag)["sha"] != sha:
         raise ValueError("The release tag moved after validation")
     release = api.repos.get_release_by_tag(tag=tag)
-    if release["draft"]:
-        raise ValueError("Assets require a published GitHub release")
     wheels = list(directory.glob("*.whl"))
     sources = list(directory.glob("*.tar.gz"))
     if len(wheels) != 1 or len(sources) != 1:
@@ -48,6 +47,23 @@ def publish_assets(api: GhApi, tag: str, sha: str, directory: Path):
         ):
             raise ValueError(f"Uploaded release asset failed verification: {path.name}")
         print(f"Uploaded {path.name}")
+    if release["draft"]:
+        if api.repos.get_commit(ref=tag)["sha"] != sha:
+            raise ValueError("The release tag moved before publication")
+        stable = published_series(api) if not release["prerelease"] else {}
+        newest = next(iter(stable.values()), None)
+        latest = not release["prerelease"] and (
+            newest is None
+            or tuple(map(int, tag[1:].split(".")))
+            >= tuple(map(int, newest[1:].split(".")))
+        )
+        api.repos.update_release(
+            release_id=release["id"],
+            draft=False,
+            make_latest="true" if latest else "false",
+        )
+    if not release.get("prerelease", False):
+        api.actions.create_workflow_dispatch(workflow_id="maintenance.yml", ref="main")
 
 
 if __name__ == "__main__":

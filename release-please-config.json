@@ -12,7 +12,9 @@
           "path": "uv.lock",
           "jsonpath": "$.package[?(@.name.value=='quantinuum-nexus-sdk')].version"
         }
-      ]
+      ],
+      "draft": true,
+      "force-tag-creation": true
     }
   }
 }

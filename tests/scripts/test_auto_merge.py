@@ -34,7 +34,7 @@ def http_error(status):
 class FakeGitHub:
     repository = "owner/repo"
 
-    def __init__(self, branch="main", **options):
+    def __init__(self, branch="release/2026.1", **options):
         self.options = options
         self.pr = {
             "number": 1,
@@ -75,17 +75,25 @@ class FakeGitHub:
             ),
         )
         self.repos = SimpleNamespace(
+            list_releases=lambda page, per_page: (
+                self.options.get(
+                    "releases",
+                    [{"tag_name": "v2026.1.0", "draft": False, "prerelease": False}],
+                )
+                if page == 1
+                else []
+            ),
             get_content=lambda path, ref: {
                 "encoding": "base64",
                 "content": base64.b64encode(self.file(path, ref).encode()).decode(),
-            }
+            },
         )
 
     def get(self, endpoint):
         self.requests.append(endpoint)
         if endpoint.endswith("/pulls/1"):
             return self.pr
-        if endpoint.endswith("/git/ref/heads/next"):
+        if endpoint.endswith("/git/ref/heads/main"):
             sequence = self.options.get("base_sequence", ["base"])
             sha = sequence[min(self.base_reads, len(sequence) - 1)]
             self.base_reads += 1
@@ -148,7 +156,7 @@ class FakeGitHub:
 
 
 def simulate(
-    branch="main",
+    branch="release/2026.1",
     event="pull_request",
     conclusion="success",
     tested_base="base",
@@ -198,7 +206,7 @@ def test_freezes_dependency_updates_during_series_promotion():
 
 def test_approves_and_merges_breaking_updates_into_next():
     api = simulate(
-        "next",
+        "main",
         head=BASE.replace("pytket==2.18.4", "pytket==3.0.0").replace(
             "qnexus==0.51.0", "qnexus==0.52.0"
         ),
@@ -211,7 +219,7 @@ def test_approves_and_merges_breaking_updates_into_next():
 @pytest.mark.parametrize("review_sha,new_approvals", [("tested", 0), ("older", 1)])
 def test_reuses_only_an_approval_for_the_current_commit(review_sha, new_approvals):
     api = simulate(
-        "next",
+        "main",
         reviews=[
             {"user": {"login": BOT}, "commit_id": review_sha, "state": "APPROVED"}
         ],
@@ -239,17 +247,17 @@ def test_reuses_only_an_approval_for_the_current_commit(review_sha, new_approval
     ],
 )
 def test_next_rejects_ineligible_updates_without_approval(options):
-    api = simulate("next", **options)
+    api = simulate("main", **options)
     assert not api.merges and not api.approvals
 
 
 @pytest.mark.parametrize("target", ["2026.5.0", "2026.12.0", "2027.1.0"])
 def test_next_supports_any_positive_series_and_preserves_rc_freeze(target):
     config = [{"target": target, "channel": "beta"}]
-    api = simulate("next", config_sequence=config)
+    api = simulate("main", config_sequence=config)
     assert len(api.merges) == len(api.approvals) == 1
     for tag in (f"refs/tags/v{target}rc1", f"refs/tags/v{target}"):
-        api = simulate("next", config_sequence=config, tags=[tag])
+        api = simulate("main", config_sequence=config, tags=[tag])
         assert not api.merges and not api.approvals
 
 
@@ -266,17 +274,17 @@ def test_next_supports_any_positive_series_and_preserves_rc_freeze(target):
     ],
 )
 def test_branch_or_rc_phase_changes_before_approval_require_fresh_ci(options):
-    api = simulate("next", **options)
+    api = simulate("main", **options)
     assert not api.merges and not api.approvals
 
 
 def test_branch_changes_during_approval_prevent_merging():
-    api = simulate("next", base_sequence=["base", "base", "new-base"])
+    api = simulate("main", base_sequence=["base", "base", "new-base"])
     assert not api.merges and len(api.approvals) == 1
 
 
 def test_missing_ci_base_snapshot_never_approves_next():
-    api = FakeGitHub("next")
+    api = FakeGitHub("main")
     auto_merge.merge_updates(
         {
             "event": "pull_request",
@@ -324,7 +332,7 @@ def test_rejects_untested_or_unauthorized_prs(options):
 @pytest.mark.parametrize(
     "version,manifest,allowed",
     [
-        ("2026.1.0", {}, True),
+        ("2026.1.0", {}, False),
         ("0.1.0", {}, False),
         ("2026.0.0", {}, False),
         ("2026.1.1", {".": "2026.1.0"}, True),
@@ -339,7 +347,7 @@ def test_release_bot_can_merge_only_the_initial_or_patch_release(
             "user": {"login": BOT},
             "head": {
                 "sha": "tested",
-                "ref": "release-please--branches--main",
+                "ref": "release-please--branches--release/2026.1",
                 "repo": {"full_name": "owner/repo"},
             },
         },
@@ -391,7 +399,7 @@ def test_cli_reads_the_workflow_event_and_uses_the_token_identity(
             "user": {"login": "hugrbot"},
             "head": {
                 "sha": "tested",
-                "ref": "release-please--branches--main",
+                "ref": "release-please--branches--release/2026.1",
                 "repo": {"full_name": "owner/repo"},
             },
         },
@@ -425,3 +433,77 @@ def test_cli_reads_the_workflow_event_and_uses_the_token_identity(
     runpy.run_path(str(Path(auto_merge.__file__)), run_name="__main__")
     api.users.get_authenticated.assert_called_once_with()
     assert bool(api.merges) == allowed
+
+
+def test_retired_series_never_automatically_merges_dependency_or_release_prs():
+    releases = [
+        {"tag_name": tag, "draft": False, "prerelease": False}
+        for tag in ("v2026.1.9", "v2026.2.0", "v2026.3.0")
+    ]
+    api = simulate(releases=releases)
+    assert not api.merges and not api.approvals
+    api = simulate(
+        releases=releases,
+        pr={
+            "user": {"login": BOT},
+            "head": {
+                "sha": "tested",
+                "ref": "release-please--branches--release/2026.1",
+                "repo": {"full_name": "owner/repo"},
+            },
+        },
+        head=BASE.replace('version = "2026.1.0"', 'version = "2026.1.1"'),
+        manifest={".": "2026.1.0"},
+    )
+    assert not api.merges and not api.approvals
+
+
+def test_main_does_not_automatically_merge_stable_release_prs():
+    api = simulate(
+        "main",
+        pr={
+            "user": {"login": BOT},
+            "head": {
+                "sha": "tested",
+                "ref": "release-please--branches--main",
+                "repo": {"full_name": "owner/repo"},
+            },
+        },
+    )
+    assert not api.merges and not api.approvals
+
+
+def test_support_window_rotation_merges_only_exact_generated_configuration(monkeypatch):
+    monkeypatch.setattr(
+        auto_merge, "expected_dependabot", lambda api: "expected config"
+    )
+    for contents, allowed in [("expected config", True), ("unexpected config", False)]:
+        api = FakeGitHub(
+            "main",
+            pr={
+                "user": {"login": BOT},
+                "head": {
+                    "sha": "tested",
+                    "ref": "automation/supported-series",
+                    "repo": {"full_name": "owner/repo"},
+                },
+            },
+            files=[".github/dependabot.yml"],
+        )
+        original_file = api.file
+        api.file = lambda path, ref, content=contents: (
+            content if path == ".github/dependabot.yml" else original_file(path, ref)
+        )
+        auto_merge.merge_updates(
+            {
+                "event": "pull_request",
+                "conclusion": "success",
+                "head_sha": "tested",
+                "pull_requests": [{"number": 1}],
+            },
+            api,
+            BOT,
+            api.repository,
+        )
+        assert bool(api.merges) == allowed
+        assert not api.approvals

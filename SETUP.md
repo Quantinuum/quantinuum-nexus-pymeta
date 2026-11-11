@@ -103,37 +103,43 @@ running the script and package suites separately on each matrix cell.
 
 ## One-time repository setup
 
-1. Create the GitHub repository, add its remote, and push an initial `feat:`
-   commit to `main` with a `Release-As: 2026.1.0` footer to select the first
-   SDK version. Enable GitHub Actions, Dependabot, and squash merges.
-2. Configure the bot account's personal access token as the Actions repository
-   secret `HUGRBOT_PAT`. It needs Contents, Pull requests, and Issues read/write
-   permissions, plus Actions read permission for RC promotion validation. The
-   token's account must have access to this repository. Organization approval
-   or SSO authorization may be required by organization policy. Workflows fail
-   with an explicit error if the secret is missing. The PAT allows bot-created
-   PRs, merges, and releases to trigger subsequent workflows. The merge script
-   resolves the bot account's login from the token; no separate username setting
-   is required. Renew the repository secret before the token expires.
-3. Protect `main`: require the `Installation checks` status and require branches
-   to be up to date before merging. Do not grant the bot account a protection
-   bypass. If reviews are required for every PR, a person must approve bot PRs;
-   unattended updates need repository rules that permit them after the required
-   checks pass.
+1. Use `main` as the default development branch. Set `.github/preview.json` to
+   the upcoming series and enable Actions, Dependabot, and squash merges.
+   Configure the default squash message as **Pull request title and description**
+   to preserve promotion footers.
+2. Set `HUGRBOT_PAT` to the release bot account's personal access token. It needs
+   Contents, Pull requests, and Issues read/write, plus Actions read/write for
+   validating candidates and dispatching publication. Branch bootstrap writes
+   workflow files, so the token also needs permission to update workflows.
+   The account must have repository access and any required organization/SSO
+   authorization. The bot's login is resolved from the token. Renew it before
+   expiry. The PAT allows bot-created PRs and releases to trigger CI.
+3. Protect `main` and all `release/*` branches. Require PRs, the **Installation
+   checks** status, up-to-date branches, and resolution of review conversations;
+   block force pushes and deletion. Configure a ruleset under repository
+   Settings → Rules → Rulesets targeting the default branch and `release/*`.
+   New numbered branches inherit the rule automatically.
+   Require no approving reviews so the bot can merge its own patch
+   release PRs after CI. Additional human/code-owner review requirements prevent
+   unattended merges until those reviews arrive. Main's development dependency
+   PRs receive the bot's approval; other changes need maintainer review.
+   The bot does not bypass required checks. Limit release-branch creation to
+   maintainers and the release bot if repository rules allow it.
 
-   Enforcing these protections on a private organization repository requires
-   GitHub Team or Enterprise. If protections are unavailable, follow the same
-   review and CI requirements manually. The bot's checks and release validation
-   still run, but cannot prevent other writers from pushing or merging directly.
-4. Leave the Actions repository variable `PYPI_PUBLISH_ENABLED` unset (or set
-   it to `false`). Releases default to GitHub only; no PyPI account, trusted
-   publisher, or `pypi` environment is needed for this mode.
-5. Push the initial commit or dispatch Release Please. It creates the first
-   release PR; after CI and required reviews pass, the release chain creates a
-   GitHub release. **Validate and publish** checks the release commit, runs the
-   full installation matrix, builds the wheel and source distribution, and
-   attaches them to the GitHub release. Confirm both assets are present and
-   the workflow succeeds.
+   GitHub plan and repository visibility determine protection availability.
+   If protection is unavailable, the automation still checks eligibility and CI,
+   but cannot stop other writers from pushing or merging directly.
+4. Leave `PYPI_PUBLISH_ENABLED` unset or `false` for GitHub-only publication.
+5. Dispatch **Maintain release series** from `main` to initialize branches for
+   existing published series. Review and merge its tooling installation PRs.
+   For a new series, use the beta/RC and promotion process in
+   [Maintaining and releasing](MAINTAINING.md). The support window contains one
+   series until a second stable series has been published.
+
+The maintenance workflow creates missing supported branches from their published
+release tags and preserves package versions, dependency pins, lockfiles, and
+release manifests. Review the generated branch setup PR before enabling patch
+updates. Published tags and release assets are left intact.
 
 The workflows honor repository protections. CI runs after the repository is
 pushed; release automation additionally requires the `HUGRBOT_PAT` repository secret.

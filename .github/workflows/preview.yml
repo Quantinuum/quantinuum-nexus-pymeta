@@ -2,7 +2,7 @@ name: Release preview
 
 on:
   push:
-    branches: [next]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   preview:
-    if: github.ref == 'refs/heads/next'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Check release token

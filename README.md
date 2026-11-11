@@ -131,7 +131,9 @@ only for components below 1.0. Major component updates and pre-1.0 minor updates
 are reserved for the upcoming series. A daily update check does not imply a new
 SDK release every day.
 
-Stable patches can continue while the next series is in preview.
+The two most recent stable series receive automatic compatible dependency updates
+and patch releases. Older series can receive manually initiated patches. Stable
+patches can continue while the next series is in preview.
 
 ### Betas and release candidates
 
