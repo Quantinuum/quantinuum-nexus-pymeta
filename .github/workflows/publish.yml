@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Draft or published release tag; for previews also select this tag as the workflow ref
+        description: Draft or published release tag; for RCs also select this tag as the workflow ref
         required: true
         type: string
 
@@ -84,11 +84,19 @@ jobs:
           python scripts/uv_pypi.py lock --check
           export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
           python scripts/uv_pypi.py build
+      - name: Check out current publication tooling
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          path: release-automation
+          persist-credentials: false
       - name: Attach distributions to the GitHub release
+        working-directory: release-automation
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
           RELEASE_SHA: ${{ needs.verify.outputs.sha }}
+          DIST_DIR: ${{ github.workspace }}/dist
         run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/publish_release.py
       - name: Preserve distributions for PyPI
         if: vars.PYPI_PUBLISH_ENABLED == 'true'

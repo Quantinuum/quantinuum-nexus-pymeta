@@ -14,6 +14,7 @@ import verify_release
     [
         ("v2026.1.0", False, False, "release", "tag", True),
         ("v2026.2.0b1", True, False, "release", "tag", True),
+        ("v2026.2.0b1", True, True, "workflow_dispatch", "main", True),
         ("v2026.2.0rc1", True, False, "release", "tag", True),
         ("v2026.2.0rc1", True, False, "workflow_dispatch", "tag", True),
         ("v2026.2.0rc1", True, False, "workflow_dispatch", "main", False),

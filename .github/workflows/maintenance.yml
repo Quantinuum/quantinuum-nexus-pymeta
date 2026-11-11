@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'scripts/maintain_releases.py'
-      - 'scripts/release_policy.py'
+      - 'scripts/**'
+      - 'tests/scripts/**'
       - '.github/templates/**'
-      - '.github/workflows/maintenance.yml'
+      - '.github/workflows/**'
   release:
     types: [published]
   schedule:

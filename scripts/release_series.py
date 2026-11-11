@@ -11,7 +11,7 @@ from pathlib import Path
 from ghapi.core import APIError
 
 from dispatch_release import dispatch_release
-from github_api import all_items, create_client, set_draft
+from github_api import all_items, create_client, get_release, set_draft
 from release_policy import published_series, release_branch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -148,12 +148,12 @@ def preview(force: bool = False):
 def publish_preview(tag: str, source: str):
     api = create_client()
     try:
-        api.repos.get_release_by_tag(tag=tag)
+        existing = get_release(api, tag)
     except APIError as error:
         if error.status_code != 404:
             raise
     else:
-        if api.repos.get_release_by_tag(tag=tag)["draft"]:
+        if existing["draft"]:
             dispatch_release(api, tag)
         else:
             print(
@@ -337,7 +337,7 @@ def promote(tag: str):
     command("git", "fetch", "origin", "--tags")
     sha = command("git", "rev-parse", f"{tag}^{{commit}}")
     api = create_client()
-    release = api.repos.get_release_by_tag(tag=tag)
+    release = get_release(api, tag)
     runs = api.actions.list_workflow_runs(
         workflow_id="publish.yml", head_sha=sha, status="success"
     )

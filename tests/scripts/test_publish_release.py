@@ -161,12 +161,22 @@ def test_uploaded_digest_is_verified(publication):
     assert api.call_count == 1
 
 
-def test_cli_uses_the_verified_release_commit(publication, monkeypatch):
+@pytest.mark.parametrize("external_directory", [False, True])
+def test_cli_uses_the_verified_release_commit(
+    publication, monkeypatch, external_directory
+):
     api, directory, _ = publication
     (directory / "dist").mkdir()
     for path in directory.glob("quantinuum*"):
         path.rename(directory / "dist" / path.name)
-    monkeypatch.chdir(directory)
+    if external_directory:
+        tooling = directory / "tooling"
+        tooling.mkdir()
+        monkeypatch.chdir(tooling)
+        monkeypatch.setenv("DIST_DIR", str(directory / "dist"))
+    else:
+        monkeypatch.chdir(directory)
+        monkeypatch.delenv("DIST_DIR", raising=False)
     monkeypatch.setenv("TAG", "v2026.1.0")
     monkeypatch.setenv("RELEASE_SHA", "verified")
     monkeypatch.setattr("github_api.create_client", lambda: api)
@@ -226,3 +236,23 @@ def test_publication_job_queues_all_tags_in_one_repository_group():
     assert settings["queue"] == "max", (
         "Multiple queued releases must not replace each other"
     )
+
+
+def test_publication_finds_draft_missing_from_tag_lookup(publication):
+    api, directory, _ = publication
+    api.repos.get_release_by_tag.side_effect = APIError("Not Found", status_code=404)
+    draft = {
+        "id": 42,
+        "draft": True,
+        "prerelease": True,
+        "tag_name": "v2026.2.0b1",
+        "upload_url": "https://uploads.github.com/releases/42/assets",
+    }
+    api.repos.list_releases.side_effect = lambda page, per_page: (
+        [draft] if page == 1 else []
+    )
+    publish_release.publish_assets(api, "v2026.2.0b1", "verified", directory)
+    api.repos.update_release.assert_called_once_with(
+        release_id=42, draft=False, make_latest="false"
+    )
+    api.repos.create_release.assert_not_called()
