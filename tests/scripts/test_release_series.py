@@ -178,7 +178,11 @@ def test_preview_creates_a_release_only_when_it_is_missing(status):
         api.repos.get_release_by_tag.side_effect = APIError(
             "Failed", status_code=status
         )
-    with patch.object(release, "create_client", return_value=api):
+    api.repos.get_release_by_tag.return_value = {"draft": False}
+    with (
+        patch.object(release, "dispatch_release"),
+        patch.object(release, "create_client", return_value=api),
+    ):
         if status in (403, 500):
             with pytest.raises(APIError):
                 release.publish_preview("v2026.2.0b1", "source-sha")
@@ -212,3 +216,19 @@ def test_preview_requires_an_existing_remote_tag():
     ):
         release.publish_preview("v2026.2.0b1", "source-sha")
     api.repos.create_release.assert_not_called()
+
+
+def test_main_maintenance_push_skips_a_target_already_released():
+    with (
+        patch.object(release, "ROOT") as root,
+        patch.object(release, "command") as command,
+        patch.object(release, "publish_preview") as publish,
+        patch.object(release, "write_version") as write,
+    ):
+        (
+            root / ".github/preview.json"
+        ).read_text.return_value = '{"target":"2026.2.0","channel":"rc"}'
+        command.side_effect = ["source", "", "source", "v2026.2.0"]
+        release.preview()
+    publish.assert_not_called()
+    write.assert_not_called()

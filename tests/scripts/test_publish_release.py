@@ -1,6 +1,8 @@
 """Check GitHub asset publication and retries without making network requests."""
 
 import hashlib
+import json
+import re
 import runpy
 from pathlib import Path
 from unittest.mock import Mock
@@ -15,8 +17,8 @@ import publish_release
 @pytest.fixture
 def publication(tmp_path):
     files = {
-        "quantinuum_nexus_sdk-2026.1.0-py3-none-any.whl": b"wheel",
-        "quantinuum_nexus_sdk-2026.1.0.tar.gz": b"source",
+        "quantinuum_nexus-2026.1.0-py3-none-any.whl": b"wheel",
+        "quantinuum_nexus-2026.1.0.tar.gz": b"source",
     }
     for name, data in files.items():
         (tmp_path / name).write_bytes(data)
@@ -52,6 +54,10 @@ def test_real_client_uploads_authenticated_binary_requests(publication):
 
     def respond(request):
         assert request.headers["Authorization"] == "token test-token"
+        if request.url.path.endswith("/actions/workflows/maintenance.yml/dispatches"):
+            assert request.method == "POST"
+            assert json.loads(request.content) == {"ref": "main"}
+            return httpx2.Response(204)
         if request.method == "POST":
             assert request.url.host == "uploads.github.com"
             assert request.headers["Content-Type"] == "application/octet-stream"
@@ -123,13 +129,11 @@ def test_existing_conflict_fails_before_any_upload(publication, state, digest):
     api.assert_not_called()
 
 
-@pytest.mark.parametrize("problem", ["moved", "draft", "missing-wheel", "extra-wheel"])
+@pytest.mark.parametrize("problem", ["moved", "missing-wheel", "extra-wheel"])
 def test_rejects_unverified_tags_drafts_and_incomplete_builds(publication, problem):
     api, directory, files = publication
     if problem == "moved":
         api.repos.get_commit.return_value = {"sha": "different"}
-    elif problem == "draft":
-        api.repos.get_release_by_tag.return_value["draft"] = True
     elif problem == "missing-wheel":
         (directory / next(iter(files))).unlink()
     else:
@@ -168,3 +172,57 @@ def test_cli_uses_the_verified_release_commit(publication, monkeypatch):
     monkeypatch.setattr("github_api.create_client", lambda: api)
     runpy.run_path(str(Path(publish_release.__file__)), run_name="__main__")
     assert api.call_count == 2
+
+
+@pytest.mark.parametrize(
+    "newest,tag,preview,expected",
+    [
+        ("v2026.2.0", "v2026.1.1", False, "false"),
+        ("v2026.2.0", "v2026.2.1", False, "true"),
+        (None, "v2026.1.0", False, "true"),
+        (None, "v2026.2.0rc1", True, "false"),
+    ],
+)
+def test_draft_publication_preserves_latest_for_older_series(
+    publication, newest, tag, preview, expected
+):
+    api, directory, _ = publication
+    api.repos.get_release_by_tag.return_value.update(draft=True, prerelease=preview)
+    api.repos.list_releases.side_effect = lambda page, per_page: (
+        [{"tag_name": newest, "draft": False, "prerelease": False}]
+        if newest and page == 1
+        else []
+    )
+    publish_release.publish_assets(api, tag, "verified", directory)
+    assert api.repos.update_release.call_args.kwargs["make_latest"] == expected
+    assert api.repos.update_release.call_args.kwargs["draft"] is False
+
+
+def test_failed_draft_upload_never_publishes_release(publication):
+    api, directory, _ = publication
+    api.repos.get_release_by_tag.return_value["draft"] = True
+    api.side_effect = APIError("Upload failed", status_code=502)
+    with pytest.raises(APIError):
+        publish_release.publish_assets(api, "v2026.1.1", "verified", directory)
+    api.repos.update_release.assert_not_called()
+
+
+def test_publication_job_queues_all_tags_in_one_repository_group():
+    workflow = (
+        Path(__file__).resolve().parents[2] / ".github/workflows/publish.yml"
+    ).read_text()
+    publish_job = workflow.split("\n  publish:\n", 1)[1].split("\n  pypi:\n", 1)[0]
+    concurrency = re.search(
+        r"^    concurrency:\n((?:      [^\n]*\n)+)", publish_job, re.MULTILINE
+    )
+    assert concurrency is not None, "Publication must be serialized across tags"
+    settings = dict(line.strip().split(": ", 1) for line in concurrency[1].splitlines())
+    assert settings["group"] and "${{" not in settings["group"], (
+        "All tags must share the same publication lock"
+    )
+    assert settings["cancel-in-progress"] == "false", (
+        "Publishing a release must not cancel another publication"
+    )
+    assert settings["queue"] == "max", (
+        "Multiple queued releases must not replace each other"
+    )

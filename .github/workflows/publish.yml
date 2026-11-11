@@ -1,12 +1,10 @@
 name: Validate and publish
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag; for previews also select this tag as the workflow ref
+        description: Draft or published release tag; for previews also select this tag as the workflow ref
         required: true
         type: string
 
@@ -14,12 +12,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: publish-${{ github.event.release.tag_name || inputs.tag }}
+  group: publish-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       sha: ${{ steps.release.outputs.sha }}
     steps:
@@ -37,7 +37,7 @@ jobs:
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          TAG: ${{ inputs.tag }}
         run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/verify_release.py
 
   test:
@@ -50,10 +50,15 @@ jobs:
     name: Publish GitHub release assets
     needs: [verify, test]
     runs-on: ubuntu-latest
+    concurrency:
+      group: github-release-publication
+      cancel-in-progress: false
+      queue: max
     outputs:
       artifact_id: ${{ steps.distributions.outputs.artifact-id }}
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -68,7 +73,7 @@ jobs:
           version: '0.13.5'
       - name: Verify version and build
         env:
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          TAG: ${{ inputs.tag }}
         run: |
           python - <<'PY'
           import os, tomllib
@@ -82,7 +87,7 @@ jobs:
       - name: Attach distributions to the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          TAG: ${{ inputs.tag }}
           RELEASE_SHA: ${{ needs.verify.outputs.sha }}
         run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/publish_release.py
       - name: Preserve distributions for PyPI

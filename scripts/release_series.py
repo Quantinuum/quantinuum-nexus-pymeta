@@ -10,7 +10,9 @@ from pathlib import Path
 
 from ghapi.core import APIError
 
+from dispatch_release import dispatch_release
 from github_api import all_items, create_client, set_draft
+from release_policy import published_series, release_branch
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = re.compile(r"(20\d{2})\.([1-9]\d*)\.0(?:(b|rc)([1-9]\d*))?")
@@ -100,7 +102,7 @@ def preview_needed(target: str, channel: str, source: str, tags: list[str]) -> b
         raise ValueError("The latest preview must identify one source commit")
     baseline = previous[0]
     if command("git", "merge-base", baseline, source) != baseline:
-        raise ValueError("The latest preview source is not an ancestor of next")
+        raise ValueError("The latest preview source is not an ancestor of main")
     messages = command("git", "log", "--format=%B%x00", f"{baseline}..{source}")
     return any(
         re.match(r"(?:fix|feat)(?:\([^\n()]+\))?!?: .+", message.lstrip("\n"))
@@ -113,10 +115,15 @@ def preview(force: bool = False):
     target, channel = config["target"], config["channel"]
     source = command("git", "rev-parse", "HEAD")
     command("git", "fetch", "origin", "--tags")
-    if command("git", "rev-parse", "origin/next") != source:
-        print("Skipping an outdated next commit; a newer preview is queued")
+    if command("git", "rev-parse", "origin/main") != source:
+        print("Skipping an outdated main commit; a newer preview is queued")
         return
     tags = command("git", "tag", "--list").splitlines()
+    if f"v{target}" in tags:
+        print(
+            "Skipping preview: this series is stable; select the next preview target on main"
+        )
+        return
     version = next_preview(target, channel, tags)
     suffix = "b" if channel == "beta" else "rc"
     # Reuse a tag after a partial failure instead of allocating another version.
@@ -146,13 +153,17 @@ def publish_preview(tag: str, source: str):
         if error.status_code != 404:
             raise
     else:
-        print(
-            f"{tag} already exists; retry its Validate and publish workflow if necessary"
-        )
+        if api.repos.get_release_by_tag(tag=tag)["draft"]:
+            dispatch_release(api, tag)
+        else:
+            print(
+                f"{tag} already exists; retry its Validate and publish workflow if necessary"
+            )
         return
     api.git.get_ref(ref=f"tags/{tag}")
     api.repos.create_release(
         tag_name=tag,
+        draft=True,
         prerelease=True,
         make_latest="false",
         name=tag,
@@ -160,6 +171,8 @@ def publish_preview(tag: str, source: str):
         "Wheel and source distributions are attached after installation checks on all supported platforms. "
         "PyPI publication is optional.",
     )
+
+    dispatch_release(api, tag)
 
 
 def validate_candidate(tag: str, release: dict, runs: list[dict], sha: str):
@@ -194,8 +207,7 @@ def verify_promotion():
     match = VERSION.fullmatch(version)
     if not match or match[3]:
         return
-    config = json.loads((ROOT / "release-please-config.json").read_text())
-    if version == config["packages"]["."]["initial-version"]:
+    if version == "2026.1.0" and not (ROOT / ".github/stable-candidate.json").exists():
         return
     candidate = json.loads((ROOT / ".github/stable-candidate.json").read_text())
     if candidate["version"] != version or not re.fullmatch(
@@ -220,7 +232,20 @@ def write_promotion(target: str, tag: str, sha: str, project: str, lock: str):
     (ROOT / ".github/stable-candidate.json").write_text(
         json.dumps({"version": target, "tag": tag, "sha": sha}, indent=2) + "\n"
     )
-    command("git", "add", "pyproject.toml", "uv.lock", ".github/stable-candidate.json")
+    config_path = ROOT / "release-please-config.json"
+    config = json.loads(config_path.read_text())
+    config["packages"]["."]["initial-version"] = target
+    config_path.write_text(json.dumps(config, indent=2) + "\n")
+    (ROOT / ".release-please-manifest.json").write_text("{}\n")
+    command(
+        "git",
+        "add",
+        "pyproject.toml",
+        "uv.lock",
+        ".github/stable-candidate.json",
+        "release-please-config.json",
+        ".release-please-manifest.json",
+    )
 
 
 def promotion_needs_commit(
@@ -317,9 +342,19 @@ def promote(tag: str):
         workflow_id="publish.yml", head_sha=sha, status="success"
     )
     target = validate_candidate(tag, release, runs["workflow_runs"], sha)
-    stable = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
-    if tuple(map(int, target.split("."))) <= tuple(map(int, stable.split("."))):
-        raise ValueError("The release series target must be newer than main")
+    series = published_series(api)
+    if series and tuple(map(int, target.split("."))) <= tuple(
+        map(int, next(iter(series.values()))[1:].split("."))
+    ):
+        raise ValueError(
+            "The release series target must be newer than published stable series"
+        )
+    base_branch = release_branch(target)
+    remote_base = command(
+        "git", "ls-remote", "--heads", "origin", f"refs/heads/{base_branch}"
+    )
+    if not remote_base:
+        command("git", "push", "origin", f"{sha}:refs/heads/{base_branch}")
     branch = f"promote-{target}"
     project = command("git", "show", f"{sha}:pyproject.toml") + "\n"
     lock = command("git", "show", f"{sha}:uv.lock") + "\n"
@@ -332,7 +367,9 @@ def promote(tag: str):
     )
     owner = os.environ["GITHUB_REPOSITORY"].split("/", 1)[0]
     existing = list(
-        all_items(api.pulls.list, head=f"{owner}:{branch}", base="main", state="open")
+        all_items(
+            api.pulls.list, head=f"{owner}:{branch}", base=base_branch, state="open"
+        )
     )
     if existing:
         update_promotion(
@@ -346,7 +383,8 @@ def promote(tag: str):
         needs_commit = promotion_needs_commit(head, target, tag, sha, project, lock)
         command("git", "switch", "--detach", head)
     else:
-        command("git", "switch", "-c", branch)
+        command("git", "fetch", "origin", f"refs/heads/{base_branch}")
+        command("git", "switch", "-c", branch, "FETCH_HEAD")
         needs_commit = True
     if needs_commit:
         write_promotion(target, tag, sha, project, lock)
@@ -354,7 +392,7 @@ def promote(tag: str):
     command("git", "push", "origin", f"HEAD:refs/heads/{branch}")
     created = api.pulls.create(
         head=branch,
-        base="main",
+        base=base_branch,
         title=f"feat: prepare release {target}",
         body=body,
     )

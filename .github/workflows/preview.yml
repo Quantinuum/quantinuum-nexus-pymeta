@@ -2,7 +2,7 @@ name: Release preview
 
 on:
   push:
-    branches: [next]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -14,8 +14,11 @@ concurrency:
 
 jobs:
   preview:
-    if: github.ref == 'refs/heads/next'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Check release token
         env:
@@ -38,5 +41,6 @@ jobs:
       - name: Create the next beta or RC
         env:
           GH_TOKEN: ${{ secrets.HUGRBOT_PAT }}
+          WORKFLOW_DISPATCH_TOKEN: ${{ github.token }}
           PREVIEW_FORCE: ${{ github.event_name == 'workflow_dispatch' }}
         run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py preview

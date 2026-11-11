@@ -127,3 +127,21 @@ def test_graphql_errors_stop_promotion(client):
     )
     with pytest.raises(RuntimeError, match="draft status"):
         set_draft(client, "PR_7", True)
+
+
+def test_explicit_token_overrides_the_default_repository_token(client):
+    dispatcher = create_client(token="workflow-token")
+
+    def respond(request):
+        assert request.headers["Authorization"] == "token workflow-token"
+        assert (
+            str(request.url)
+            == "https://github.example/api/v3/repos/owner/repo/actions/workflows/publish.yml/dispatches"
+        )
+        assert json.loads(request.content) == {"ref": "v2026.1.1"}
+        return httpx2.Response(204)
+
+    stub_requests(dispatcher, respond)
+    dispatcher.actions.create_workflow_dispatch(
+        workflow_id="publish.yml", ref="v2026.1.1"
+    )

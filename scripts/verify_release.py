@@ -14,7 +14,7 @@ def verify_release(tag: str, api: GhApi, event_name: str, workflow_sha: str) -> 
         raise ValueError("Expected a YEAR.SERIES.PATCH stable, beta, or RC tag")
     release = api.repos.get_release_by_tag(tag=tag)
     preview = bool(re.search(r"(?:b|rc)[1-9]\d*$", tag))
-    if release["draft"] or release["prerelease"] != preview:
+    if release["prerelease"] != preview:
         raise ValueError("Release status must match the version")
     sha = api.repos.get_commit(ref=tag)["sha"]
     if preview and event_name == "workflow_dispatch" and workflow_sha != sha:
