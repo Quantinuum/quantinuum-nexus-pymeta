@@ -3,7 +3,7 @@
 import base64
 import os
 
-from ghapi.core import GhApi
+from ghapi.core import APIError, GhApi
 from ghapi.page import sync_paged
 
 
@@ -25,6 +25,19 @@ def all_items(operation, **parameters):
     """Iterate every item from a paginated list endpoint."""
     for page in sync_paged(operation, per_page=100, **parameters):
         yield from page
+
+
+def get_release(api: GhApi, tag: str) -> dict:
+    """Find a published or draft release for an exact tag."""
+    try:
+        return api.repos.get_release_by_tag(tag=tag)
+    except APIError as error:
+        if error.status_code != 404:
+            raise
+        for release in all_items(api.repos.list_releases):
+            if release["tag_name"] == tag:
+                return release
+        raise
 
 
 def read_file(api: GhApi, path: str, ref: str) -> str:

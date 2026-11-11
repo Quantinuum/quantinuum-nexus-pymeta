@@ -167,7 +167,7 @@ pushed; release automation additionally requires the `HUGRBOT_PAT` repository se
    files using OIDC. No PyPI API token is required.
 
 To publish an existing GitHub release to PyPI after enabling the variable,
-rerun **Validate and publish** with that release tag. For a beta or RC, also
+rerun **Validate and publish** with that release tag. For an RC, also
 select the tag as the workflow ref. Setting the variable to `false` or removing
 it disables subsequent PyPI uploads without disabling GitHub releases.
 

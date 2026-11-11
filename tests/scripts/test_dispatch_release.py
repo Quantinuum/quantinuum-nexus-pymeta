@@ -3,13 +3,15 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from ghapi.core import APIError
 
 import dispatch_release
 
 
 @pytest.mark.parametrize("tag", ["v2026.1.1", "v2026.2.0rc1"])
+@pytest.mark.parametrize("lookup_missing", [False, True])
 def test_dispatch_uses_workflow_token_and_verifies_with_repository_client(
-    monkeypatch, tag
+    monkeypatch, tag, lookup_missing
 ):
     monkeypatch.setenv("WORKFLOW_DISPATCH_TOKEN", "workflow-token")
     repository = Mock()
@@ -17,6 +19,15 @@ def test_dispatch_uses_workflow_token_and_verifies_with_repository_client(
         "draft": True,
         "prerelease": "rc" in tag,
     }
+    draft = repository.repos.get_release_by_tag.return_value
+    draft["tag_name"] = tag
+    if lookup_missing:
+        repository.repos.get_release_by_tag.side_effect = APIError(
+            "Not Found", status_code=404
+        )
+        repository.repos.list_releases.side_effect = lambda page, per_page: (
+            [draft] if page == 1 else []
+        )
     repository.repos.get_commit.return_value = {"sha": "verified-sha"}
     dispatcher = Mock()
     with patch.object(

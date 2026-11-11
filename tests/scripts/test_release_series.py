@@ -179,6 +179,7 @@ def test_preview_creates_a_release_only_when_it_is_missing(status):
             "Failed", status_code=status
         )
     api.repos.get_release_by_tag.return_value = {"draft": False}
+    api.repos.list_releases.side_effect = lambda page, per_page: []
     with (
         patch.object(release, "dispatch_release"),
         patch.object(release, "create_client", return_value=api),
@@ -210,6 +211,7 @@ def test_preview_requires_an_existing_remote_tag():
         "Missing release", status_code=404
     )
     api.git.get_ref.side_effect = APIError("Missing tag", status_code=404)
+    api.repos.list_releases.side_effect = lambda page, per_page: []
     with (
         patch.object(release, "create_client", return_value=api),
         pytest.raises(APIError),
@@ -232,3 +234,23 @@ def test_main_maintenance_push_skips_a_target_already_released():
         release.preview()
     publish.assert_not_called()
     write.assert_not_called()
+
+
+def test_preview_retry_reuses_draft_not_returned_by_tag_lookup():
+    from unittest.mock import Mock
+
+    from ghapi.core import APIError
+
+    api = Mock()
+    api.repos.get_release_by_tag.side_effect = APIError("Not Found", status_code=404)
+    api.repos.list_releases.side_effect = lambda page, per_page: (
+        [{"id": 42, "tag_name": "v2026.2.0b1", "draft": True}] if page == 1 else []
+    )
+    with (
+        patch.object(release, "create_client", return_value=api),
+        patch.object(release, "dispatch_release") as dispatch,
+    ):
+        release.publish_preview("v2026.2.0b1", "source")
+    dispatch.assert_called_once_with(api, "v2026.2.0b1")
+    api.repos.create_release.assert_not_called()
+    api.git.get_ref.assert_not_called()

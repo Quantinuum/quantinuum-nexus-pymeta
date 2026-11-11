@@ -19,7 +19,7 @@ The release and merge workflows query published releases directly, so stale
 Dependabot PRs cannot keep an unsupported series in automatic maintenance.
 
 **Maintain release series** runs daily, on stable publication, and when its
-configuration changes on `main`. It opens a PR updating `.github/dependabot.yml`
+configuration or release tooling changes on `main`. It opens a PR updating `.github/dependabot.yml`
 from the templates in `.github/templates/`. The merge workflow merges this PR
 after CI only when its contents exactly match the current support window.
 Dispatch the maintenance workflow on `main` to reconcile immediately. It also
@@ -125,9 +125,11 @@ Publication jobs share a repository-wide queue so their latest-version checks
 and release publication cannot overlap across tags. Installation checks for
 different tags can run concurrently.
 
-To retry, dispatch **Validate and publish** with the existing tag. For previews,
+To retry, dispatch **Validate and publish** with the existing tag. For RCs,
 select the tag as the workflow ref too, so promotion can find the successful run
-for that exact RC commit. Matching assets are reused; differing or incomplete
+for that exact RC commit. Beta and stable retries can run from `main`. The
+publisher uses current tooling from `main` to attach the distributions built
+from the verified release commit. Matching assets are reused; differing or incomplete
 assets fail rather than being replaced. Do not reuse a version for different
 contents. Builds use the release commit timestamp for reproducible archives.
 

@@ -6,14 +6,14 @@ from pathlib import Path
 
 from ghapi.core import GhApi
 
-from github_api import all_items, create_client
+from github_api import all_items, create_client, get_release
 from release_policy import published_series
 
 
 def publish_assets(api: GhApi, tag: str, sha: str, directory: Path):
     if api.repos.get_commit(ref=tag)["sha"] != sha:
         raise ValueError("The release tag moved after validation")
-    release = api.repos.get_release_by_tag(tag=tag)
+    release = get_release(api, tag)
     wheels = list(directory.glob("*.whl"))
     sources = list(directory.glob("*.tar.gz"))
     if len(wheels) != 1 or len(sources) != 1:
@@ -68,5 +68,8 @@ def publish_assets(api: GhApi, tag: str, sha: str, directory: Path):
 
 if __name__ == "__main__":
     publish_assets(
-        create_client(), os.environ["TAG"], os.environ["RELEASE_SHA"], Path("dist")
+        create_client(),
+        os.environ["TAG"],
+        os.environ["RELEASE_SHA"],
+        Path(os.environ.get("DIST_DIR", "dist")),
     )
