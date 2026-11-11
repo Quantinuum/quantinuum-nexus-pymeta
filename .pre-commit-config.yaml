@@ -23,10 +23,3 @@ repos:
         language: system
         pass_filenames: false
         files: '^(pyproject\.toml|uv\.lock|uv\.toml|scripts/uv_pypi\.py|justfile|\.pre-commit-config\.yaml)$'
-      - id: pytest-matrix
-        name: Script tests on all supported Python versions
-        entry: just test-scripts
-        language: system
-        pass_filenames: false
-        require_serial: true
-        files: '^((scripts|tests)/.*\.py|pyproject\.toml|uv\.lock|uv\.toml|\.github/.*|justfile|\.pre-commit-config\.yaml)$'

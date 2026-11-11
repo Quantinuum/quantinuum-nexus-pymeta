@@ -48,13 +48,10 @@ just hooks ruff-check --all-files
 just hooks ruff-format --all-files
 ```
 
-On commits that change Python code or relevant configuration, the hook runs
-pytest on every supported Python minor, including approval, merge, and
-publication policy tests.
-Dependency changes also check the lockfile. Documentation-only commits skip these
-tests. The Python suite includes temporary Git repositories, so a full commit
-check can take about a minute. Distribution installation tests run in CI and
-through `just test-package` or `just test-all`.
+Commits that change dependency or packaging configuration also check the lockfile.
+Run script tests explicitly with `just test-scripts 3.12` during development;
+`just test-scripts` runs the suite on every supported Python minor. Distribution
+installation tests run in CI and through `just test-package` or `just test-all`.
 
 Hooks must be installed once per clone. The pre-commit executable lives in the
 persistent project `.venv`; run `just setup` again after recreating it. The test
@@ -97,13 +94,16 @@ into a separate fresh environment, run `uv pip check`, and verify the installed
 metapackage metadata and all six dependency versions. They resolve dependencies
 as a consumer would, independently of the development lockfile.
 
-GitHub CI checks the lockfile and both installation formats on every stable
-CPython minor version in the declared Python range. It uses `ubuntu-latest`,
+GitHub CI runs on pull requests, explicit workflow dispatches, and tagged-release
+validation. Script tests and the lockfile check run once on Ubuntu/Python 3.12,
+matching the automation workflows. Both installation formats are tested on every
+stable CPython minor version in the declared Python range using `ubuntu-latest`,
 `windows-latest`, `macos-latest` (Apple Silicon), and `macos-26-intel` (the latest
 standard Intel macOS image), excluding the unsupported Intel macOS/Python 3.14
 combination. The explicit Intel label needs updating when GitHub
-introduces a newer image. CI uses the same pytest runner as the just recipes,
-running the script and package suites separately on each matrix cell.
+introduces a newer image. CI uses the same pytest runner as the just recipes.
+The required **Installation checks** status covers both the script tests and
+the full installation matrix.
 
 ## One-time repository setup
 
