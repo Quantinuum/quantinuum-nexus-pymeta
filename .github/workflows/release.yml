@@ -14,19 +14,18 @@ concurrency:
 
 jobs:
   release:
-    if: vars.RELEASE_APP_CLIENT_ID != ''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/create-github-app-token@v3
-        id: token
-        with:
-          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          permission-contents: write
-          permission-pull-requests: write
-          permission-issues: write
+      - name: Check release token
+        env:
+          GH_TOKEN: ${{ secrets.HUGRBOT_PAT }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::The HUGRBOT_PAT repository secret is required."
+            exit 1
+          fi
       - uses: googleapis/release-please-action@v4
         with:
-          token: ${{ steps.token.outputs.token }}
+          token: ${{ secrets.HUGRBOT_PAT }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json

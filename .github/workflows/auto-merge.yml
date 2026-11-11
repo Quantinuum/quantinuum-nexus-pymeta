@@ -18,18 +18,18 @@ concurrency:
 jobs:
   merge:
     if: >-
-      vars.RELEASE_APP_CLIENT_ID != '' &&
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/create-github-app-token@v3
-        id: token
-        with:
-          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          permission-contents: write
-          permission-pull-requests: write
+      - name: Check release token
+        env:
+          GH_TOKEN: ${{ secrets.HUGRBOT_PAT }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::The HUGRBOT_PAT repository secret is required."
+            exit 1
+          fi
       # workflow_run checks out the default branch, never the PR branch.
       - uses: actions/checkout@v7
         with:
@@ -42,6 +42,5 @@ jobs:
           version: '0.13.5'
       - name: Approve and merge tested updates
         env:
-          GH_TOKEN: ${{ steps.token.outputs.token }}
-          RELEASE_BOT: ${{ steps.token.outputs.app-slug }}[bot]
+          GH_TOKEN: ${{ secrets.HUGRBOT_PAT }}
         run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/auto_merge.py

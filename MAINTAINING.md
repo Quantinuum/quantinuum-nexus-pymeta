@@ -94,7 +94,7 @@ upgrades below 1.0. All component versions remain exact pins. Compatible minor
 and patch upgrades are included too, so the beta set can stay current.
 
 After a Dependabot PR passes CI against the current `next` base commit, the
-release App submits an approval for that exact head commit and squash merges
+release bot submits an approval for that exact head commit and squash merges
 the PR. This triggers the next beta release. Automatic approval only applies
 to PRs authored by Dependabot that change the six tool pins and lockfile;
 project settings, additional files, downgrades, and component prereleases
@@ -173,7 +173,7 @@ For the official release:
    squash commit. Configure GitHub's default squash message as **Pull request
    title and description** to retain this footer automatically.
    Require at least one approving review on `main`, enable dismissal of stale
-   approvals, and permit the release App to dismiss reviews. If an update cannot
+   approvals, and permit the release bot to dismiss reviews. If an update cannot
    dismiss old approvals, the workflow fails and leaves the PR as a draft; resolve
    that restriction and rerun before making it ready for a fresh review.
 4. Review and merge the Release Please PR for the new series. Both this PR and
@@ -190,9 +190,9 @@ For the official release:
 
 Stable patches continue on `main` during the preview cycle. Protect `next` with
 the same required installation checks as `main`, require branches to be up to
-date, and allow the release App's approval to satisfy the dependency PR review
+date, and allow the release bot's approval to satisfy the dependency PR review
 requirement. Additional human or code-owner review requirements still apply;
-the App does not bypass them. The RC freeze and other configuration changes
+the bot account does not bypass them. The RC freeze and other configuration changes
 require maintainer review. Preview releases never mark themselves
 as GitHub's latest stable release. For a failed GitHub or PyPI upload, retry
 **Validate and publish** with the existing tag; do not reuse that version for different contents.

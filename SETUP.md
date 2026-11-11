@@ -60,8 +60,8 @@ Hooks must be installed once per clone. The pre-commit executable lives in the
 persistent project `.venv`; run `just setup` again after recreating it. The test
 repositories disable Git hooks to avoid recursive test runs during commits.
 
-The approval, merge, and release workflows use `ghapi` with their GitHub App or
-job tokens. Its exact version is pinned in the `automation` dependency group,
+The approval, merge, and release workflows use `ghapi` with the bot account
+PAT or built-in job tokens. Its exact version is pinned in the `automation` dependency group,
 which is also included in `dev`. Git operations use the Git executable.
 Tests mock GitHub responses and never submit real reviews or merges.
 
@@ -105,14 +105,17 @@ running the script and package suites separately on each matrix cell.
 
 1. Create the GitHub repository, add its remote, and push an initial `feat:`
    commit to `main`. Enable GitHub Actions, Dependabot, and squash merges.
-2. Create and install a GitHub App on this repository with Contents, Pull
-   requests, and Issues read/write permissions, plus Actions read permission
-   for RC promotion validation. Set the Actions variable
-   `RELEASE_APP_CLIENT_ID` and secret `RELEASE_APP_PRIVATE_KEY`. Release and merge
-   automation remain disabled until the client ID is configured. App tokens
-   ensure bot-created PRs, merges, and releases trigger subsequent workflows.
+2. Configure the bot account's personal access token as the Actions repository
+   secret `HUGRBOT_PAT`. It needs Contents, Pull requests, and Issues read/write
+   permissions, plus Actions read permission for RC promotion validation. The
+   token's account must have access to this repository. Organization approval
+   or SSO authorization may be required by organization policy. Workflows fail
+   with an explicit error if the secret is missing. The PAT allows bot-created
+   PRs, merges, and releases to trigger subsequent workflows. The merge script
+   resolves the bot account's login from the token; no separate username setting
+   is required. Renew the repository secret before the token expires.
 3. Protect `main`: require the `Installation checks` status and require branches
-   to be up to date before merging. Do not grant the release App a protection
+   to be up to date before merging. Do not grant the bot account a protection
    bypass. If reviews are required for every PR, a person must approve bot PRs;
    unattended updates need repository rules that permit them after the required
    checks pass.
@@ -127,7 +130,7 @@ running the script and package suites separately on each matrix cell.
    the workflow succeeds.
 
 The workflows honor repository protections. CI runs after the repository is
-pushed; release automation additionally requires the GitHub App configuration.
+pushed; release automation additionally requires the `HUGRBOT_PAT` repository secret.
 
 ## Enabling optional PyPI publication
 

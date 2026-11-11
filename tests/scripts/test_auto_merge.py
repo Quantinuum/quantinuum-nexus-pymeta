@@ -5,6 +5,7 @@ import json
 import runpy
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from ghapi.core import APIError
@@ -377,8 +378,27 @@ def test_rejected_merges_fail_the_workflow():
         simulate(merge_success=False)
 
 
-def test_cli_reads_the_workflow_event_and_uses_the_app_identity(tmp_path, monkeypatch):
-    api = FakeGitHub()
+@pytest.mark.parametrize(
+    "token_login,allowed", [("hugrbot", True), ("another-account", False)]
+)
+def test_cli_reads_the_workflow_event_and_uses_the_token_identity(
+    tmp_path, monkeypatch, token_login, allowed
+):
+    api = FakeGitHub(
+        pr={
+            "user": {"login": "hugrbot"},
+            "head": {
+                "sha": "tested",
+                "ref": "release-please--branches--main",
+                "repo": {"full_name": "owner/repo"},
+            },
+        },
+        head=BASE.replace('version = "2026.1.0"', 'version = "2026.1.1"'),
+        manifest={".": "2026.1.0"},
+    )
+    api.users = SimpleNamespace(
+        get_authenticated=Mock(return_value={"login": token_login})
+    )
     path = tmp_path / "event.json"
     path.write_text(
         json.dumps(
@@ -396,9 +416,10 @@ def test_cli_reads_the_workflow_event_and_uses_the_app_identity(tmp_path, monkey
         "GITHUB_EVENT_PATH": str(path),
         "GITHUB_REPOSITORY": "owner/repo",
         "GH_TOKEN": "test-token",
-        "RELEASE_BOT": BOT,
+        "RELEASE_BOT": "unrelated-user",
     }.items():
         monkeypatch.setenv(name, value)
     monkeypatch.setattr("github_api.create_client", lambda: api)
     runpy.run_path(str(Path(auto_merge.__file__)), run_name="__main__")
-    assert len(api.merges) == 1
+    api.users.get_authenticated.assert_called_once_with()
+    assert bool(api.merges) == allowed

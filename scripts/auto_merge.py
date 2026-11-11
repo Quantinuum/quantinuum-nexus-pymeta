@@ -193,9 +193,10 @@ def merge_updates(run: dict, api: GhApi, release_bot: str, repository: str):
 
 if __name__ == "__main__":
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+    client = create_client()
     merge_updates(
         event["workflow_run"],
-        create_client(),
-        os.environ["RELEASE_BOT"],
+        client,
+        client.users.get_authenticated()["login"],
         os.environ["GITHUB_REPOSITORY"],
     )
