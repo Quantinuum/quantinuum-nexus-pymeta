@@ -55,6 +55,9 @@ class TestPromotionUpdate:
         self.configure_git(seed)
         (seed / ".github").mkdir()
         (seed / ".github/preview.json").write_text("{}\n")
+        (seed / "release-please-config.json").write_text(
+            '{"packages": {".": {"initial-version": "2026.1.0"}}}\n'
+        )
         (seed / "pyproject.toml").write_text(self.project)
         (seed / "uv.lock").write_text(self.lock)
         self.git(seed, "add", ".")
@@ -129,6 +132,7 @@ class TestPromotionUpdate:
         self.configure_git(clone)
         api = Mock()
         self.api = api
+        api.repos.list_releases.side_effect = lambda page, per_page: []
         api.repos.get_release_by_tag.return_value = {"draft": False, "prerelease": True}
         tag = f"v{self.target}rc{counter}"
         api.actions.list_workflow_runs.return_value = {
@@ -148,7 +152,11 @@ class TestPromotionUpdate:
         original_command = release.command
 
         def command(*arguments):
-            if arguments[:3] == ("git", "push", "origin") and before_push:
+            if (
+                arguments[:3] == ("git", "push", "origin")
+                and arguments[3].startswith("HEAD:")
+                and before_push
+            ):
                 before_push()
             return original_command(*arguments)
 
@@ -219,7 +227,24 @@ class TestPromotionUpdate:
         self.promote(2)
         arguments = self.api.pulls.create.call_args.kwargs
         assert arguments["head"] == self.branch
-        assert arguments["base"] == "main"
+        assert (
+            self.git(
+                self.scratch,
+                "--git-dir",
+                str(self.origin),
+                "rev-parse",
+                "refs/heads/release/" + self.target.rsplit(".", 1)[0],
+            )
+            == self.candidates[f"v{self.target}rc2"]
+        )
+        assert json.loads(self.read_remote(".release-please-manifest.json")) == {}
+        assert (
+            json.loads(self.read_remote("release-please-config.json"))["packages"]["."][
+                "initial-version"
+            ]
+            == self.target
+        )
+        assert arguments["base"] == "release/" + self.target.rsplit(".", 1)[0]
         assert arguments["body"] == self.body(f"v{self.target}rc2")
         assert (
             json.loads(self.read_remote(".github/stable-candidate.json"))["sha"]

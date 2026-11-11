@@ -3,7 +3,7 @@ requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "quantinuum-nexus-sdk"
+name = "quantinuum-nexus"
 version = "2026.1.0"
 description = "Quantinuum's Python development tools"
 readme = "README.md"

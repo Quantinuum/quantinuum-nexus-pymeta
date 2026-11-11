@@ -1,6 +1,6 @@
-# Quantinuum Nexus SDK
+# Quantinuum Nexus Python Metapackage
 
-`quantinuum-nexus-sdk` installs a versioned set of Quantinuum's Python tools for
+`quantinuum-nexus` installs a versioned set of Quantinuum's Python tools for
 quantum programming, fault tolerance, local emulation, circuit compilation, and
 access to Quantinuum Nexus. Install one SDK version to select the exact component
 versions for that release instead of choosing each component version separately.
@@ -41,24 +41,24 @@ Python 3.15 and later are outside this release's supported range. The pinned
 ## Installation
 
 Releases are initially distributed through
-[GitHub Releases](https://github.com/Quantinuum/quantinuum-nexus-sdk/releases).
+[GitHub Releases](https://github.com/Quantinuum/quantinuum-nexus-pymeta/releases).
 Download the wheel (`.whl`) attached to the release you want. In a directory
 containing that single SDK wheel, add it to your uv project using:
 
 ```sh
-uv add ./quantinuum_nexus_sdk-*.whl
+uv add ./quantinuum_nexus-*.whl
 ```
 
 Or install it into an existing activated virtual environment using:
 
 ```sh
-uv pip install ./quantinuum_nexus_sdk-*.whl
+uv pip install ./quantinuum_nexus-*.whl
 ```
 
 Alternatively, use pip:
 
 ```sh
-python -m pip install ./quantinuum_nexus_sdk-*.whl
+python -m pip install ./quantinuum_nexus-*.whl
 ```
 
 These shell examples expand the wheel filename; you can also pass its exact
@@ -70,19 +70,19 @@ to install once its wheel and source distribution appear under release assets.
 For releases also published to PyPI, add the SDK to your uv project using:
 
 ```sh
-uv add quantinuum-nexus-sdk
+uv add quantinuum-nexus
 ```
 
 Or install it into an existing activated virtual environment using:
 
 ```sh
-uv pip install quantinuum-nexus-sdk
+uv pip install quantinuum-nexus
 ```
 
 Alternatively, install it into that environment using pip:
 
 ```sh
-python -m pip install quantinuum-nexus-sdk
+python -m pip install quantinuum-nexus
 ```
 
 Verify that the environment's installed dependencies are consistent with:
@@ -91,7 +91,7 @@ Verify that the environment's installed dependencies are consistent with:
 python -m pip check
 ```
 
-There is no `quantinuum_nexus_sdk` module to import. Use the installed tools
+There is no `quantinuum_nexus` module to import. Use the installed tools
 directly, for example:
 
 ```python
@@ -131,7 +131,9 @@ only for components below 1.0. Major component updates and pre-1.0 minor updates
 are reserved for the upcoming series. A daily update check does not imply a new
 SDK release every day.
 
-Stable patches can continue while the next series is in preview.
+The two most recent stable series receive automatic compatible dependency updates
+and patch releases. Older series can receive manually initiated patches. Stable
+patches can continue while the next series is in preview.
 
 ### Betas and release candidates
 
@@ -151,13 +153,13 @@ above. For previews also published to PyPI, allow preview versions when adding
 or upgrading the SDK in your uv project:
 
 ```sh
-uv add --upgrade --prerelease allow quantinuum-nexus-sdk
+uv add --upgrade --prerelease allow quantinuum-nexus
 ```
 
 Alternatively, use pip in an existing activated virtual environment:
 
 ```sh
-python -m pip install --upgrade --pre quantinuum-nexus-sdk
+python -m pip install --upgrade --pre quantinuum-nexus
 ```
 
 ## Repository guides
