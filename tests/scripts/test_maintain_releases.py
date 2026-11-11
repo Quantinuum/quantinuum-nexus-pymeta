@@ -1,5 +1,7 @@
 """Check dependency target rotation and retry-safe maintenance PRs."""
 
+import json
+import tomllib
 from unittest.mock import Mock, patch
 
 import pytest
@@ -70,28 +72,38 @@ def test_maintenance_pr_with_unchanged_contents_refreshes_only_outdated_base(
     api.pulls.create.assert_not_called()
 
 
-def test_bootstrap_retries_after_branch_creation_preserve_package_metadata():
+def test_bootstrap_retries_after_branch_creation_preserve_package_metadata(tmp_path):
     api = Mock()
-    files = {"release-please-config.json": '{"packages": {".": {}}}'}
+    api.git.get_ref.return_value = {"object": {"sha": "baseline"}}
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "quantinuum-nexus"\n')
+    (tmp_path / "release-please-config.json").write_text('{"packages": {".": {}}}')
+
+    def read(api, path, ref):
+        if path == "scripts/release_policy.py":
+            raise APIError("Missing", status_code=404)
+        assert path == "pyproject.toml"
+        return '[project]\nname = "quantinuum-nexus"\n'
+
     with (
-        patch.object(
-            maintenance, "read_file", side_effect=APIError("Missing", status_code=404)
-        ),
+        patch.object(maintenance, "read_file", side_effect=read),
         patch.object(
             maintenance.subprocess,
             "check_output",
             return_value="release-please-config.json\npyproject.toml\nuv.lock\n.release-please-manifest.json\n",
         ),
-        patch.object(maintenance, "ROOT") as root,
+        patch.object(maintenance, "ROOT", tmp_path),
         patch.object(maintenance, "open_files_pr") as open_pr,
     ):
-        (root / "release-please-config.json").read_text.return_value = files[
-            "release-please-config.json"
-        ]
         maintenance.bootstrap(api, "release/2026.1", "v2026.1.3")
     contents = open_pr.call_args.args[3]
     assert set(contents) == {"release-please-config.json"}
-    assert '"initial-version": "2026.1.0"' in contents["release-please-config.json"]
+    assert (
+        json.loads(contents["release-please-config.json"])["packages"]["."][
+            "initial-version"
+        ]
+        == "2026.1.0"
+    )
+    assert open_pr.call_args.kwargs["expected_base"] == "baseline"
     api.git.create_ref.assert_not_called()
 
 
@@ -147,3 +159,112 @@ def test_minor_update_restrictions_follow_each_series_component_major_versions()
     current, previous = config.split("target-branch: release/2026.1")
     assert "dependency-name: qnexus" not in current
     assert "dependency-name: qnexus" in previous
+
+
+@pytest.mark.parametrize("has_tooling", [False, True])
+def test_branch_setup_renames_distribution_without_copying_development_pins(
+    tmp_path, monkeypatch, has_tooling
+):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "Quantinuum/quantinuum-nexus-pymeta")
+    api = Mock()
+    api.git.get_ref.return_value = {"object": {"sha": "baseline"}}
+    project = '[project]\nname = "quantinuum-nexus-sdk"\nversion = "2026.1.3"\ndependencies = ["component==1.2.3"]\n'
+    lock = 'version = 1\n[[package]]\nname = "component"\nversion = "1.2.3"\n[[package]]\nname = "quantinuum-nexus-sdk"\nversion = "2026.1.3"\ndependencies = [{name = "component"}]\n'
+    config = {
+        "packages": {
+            ".": {
+                "initial-version": "2026.1.0",
+                "extra-files": [
+                    {
+                        "type": "toml",
+                        "path": "uv.lock",
+                        "jsonpath": "$.package[?(@.name.value=='quantinuum-nexus-sdk')].version",
+                    }
+                ],
+            }
+        }
+    }
+    files = {
+        "pyproject.toml": project,
+        "uv.lock": lock,
+        "README.md": "[GitHub Releases](https://github.com/Quantinuum/quantinuum-nexus-sdk/releases)\nuv add ./quantinuum_nexus_sdk-*.whl\npip install quantinuum-nexus-sdk\n",
+        "release-please-config.json": json.dumps(config),
+        "scripts/release_policy.py": "tooling",
+    }
+    for path, text in files.items():
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "quantinuum-nexus"\nversion = "2026.2.0"\ndependencies = ["component==9.0.0"]\n'
+    )
+    (tmp_path / "README.md").write_text(
+        "[GitHub Releases](https://github.com/Quantinuum/quantinuum-nexus-pymeta/releases)\n"
+    )
+
+    def read(api, path, ref):
+        if path == "scripts/release_policy.py" and not has_tooling:
+            raise APIError("Missing", status_code=404)
+        return files[path]
+
+    with (
+        patch.object(maintenance, "ROOT", tmp_path),
+        patch.object(maintenance, "read_file", side_effect=read),
+        patch.object(
+            maintenance.subprocess, "check_output", return_value="\n".join(files)
+        ),
+        patch.object(maintenance, "open_files_pr") as open_pr,
+    ):
+        maintenance.bootstrap(api, "release/2026.1", "v2026.1.3")
+    result = open_pr.call_args.args[3]
+    assert open_pr.call_args.args[4] == "fix: rename metapackage to quantinuum-nexus"
+    expected_project = tomllib.loads(project)
+    expected_project["project"]["name"] = "quantinuum-nexus"
+    assert tomllib.loads(result["pyproject.toml"]) == expected_project
+    expected_lock = tomllib.loads(lock)
+    expected_lock["package"][1]["name"] = "quantinuum-nexus"
+    assert tomllib.loads(result["uv.lock"]) == expected_lock
+    assert ".release-please-manifest.json" not in result
+    assert ("scripts/release_policy.py" in result) is not has_tooling
+    assert (
+        "https://github.com/Quantinuum/quantinuum-nexus-pymeta/releases"
+        in result["README.md"]
+    )
+    assert "quantinuum_nexus-*.whl" in result["README.md"]
+    target = json.loads(result["release-please-config.json"])["packages"]["."]
+    assert (
+        target["extra-files"][0]["jsonpath"]
+        == "$.package[?(@.name.value=='quantinuum-nexus')].version"
+    )
+    assert target["initial-version"] == "2026.1.0"
+
+
+def test_setup_rejects_a_concurrent_release_branch_update():
+    api = Mock()
+    api.git.get_ref.return_value = {"object": {"sha": "new-head"}}
+    with pytest.raises(ValueError, match="changed"):
+        maintenance.open_files_pr(
+            api,
+            "release/2026.1",
+            "automation/bootstrap-2026.1",
+            {},
+            "title",
+            "body",
+            expected_base="old-head",
+        )
+    api.git.create_commit.assert_not_called()
+    api.git.update_ref.assert_not_called()
+
+
+def test_aligned_release_branch_does_not_get_another_setup_pr(tmp_path):
+    api = Mock()
+    api.git.get_ref.return_value = {"object": {"sha": "baseline"}}
+    project = '[project]\nname = "quantinuum-nexus"\n'
+    (tmp_path / "pyproject.toml").write_text(project)
+    with (
+        patch.object(maintenance, "ROOT", tmp_path),
+        patch.object(maintenance, "read_file", return_value=project),
+        patch.object(maintenance, "open_files_pr") as open_pr,
+    ):
+        maintenance.bootstrap(api, "release/2026.1", "v2026.1.3")
+    open_pr.assert_not_called()

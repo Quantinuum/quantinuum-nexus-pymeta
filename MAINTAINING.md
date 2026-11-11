@@ -26,6 +26,9 @@ Dispatch the maintenance workflow on `main` to reconcile immediately. It also
 creates missing supported branches from their highest published patch tag and
 opens a tooling installation PR. Review and merge that PR before using the branch
 for maintenance. Retrying the workflow resumes a partial branch setup.
+The setup PR aligns the distribution name with `main`, including the metapackage
+entry in the lockfile and the Release Please version target, while preserving
+the branch's version and component pins.
 
 Dependabot checks the six SDK tools daily. On supported stable branches, it
 groups compatible upgrades: minor and patch updates for components at version

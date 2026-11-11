@@ -13,7 +13,7 @@ from ghapi.core import APIError
 import auto_merge
 
 BASE = """[project]
-name = "quantinuum-nexus-sdk"
+name = "quantinuum-nexus"
 version = "2026.1.0"
 dependencies = [
   "guppylang==1.1.3",

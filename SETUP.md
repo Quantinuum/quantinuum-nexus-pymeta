@@ -142,8 +142,9 @@ running the script and package suites separately on each matrix cell.
    series until a second stable series has been published.
 
 The maintenance workflow creates missing supported branches from their published
-release tags and preserves package versions, dependency pins, lockfiles, and
-release manifests. Review the generated branch setup PR before enabling patch
+release tags and aligns their distribution name with `main`, preserving package
+versions, component pins, other lockfile data, and release manifests.
+Review the generated branch setup PR before enabling patch
 updates. Published tags and release assets are left intact.
 
 The workflows honor repository protections. CI runs after the repository is
@@ -153,8 +154,8 @@ pushed; release automation additionally requires the `HUGRBOT_PAT` repository se
 
 1. Confirm package name availability and Quantinuum ownership on PyPI. Configure
    a trusted publisher (or pending publisher for a new project) for
-   `quantinuum-nexus-sdk`, GitHub owner `Quantinuum`, repository
-   `quantinuum-nexus-sdk`, workflow filename `publish.yml`, and environment
+   `quantinuum-nexus`, GitHub owner `Quantinuum`, repository
+   `quantinuum-nexus-pymeta`, workflow filename `publish.yml`, and environment
    `pypi`.
 2. Create the GitHub environment `pypi`. Leave required reviewers unset for
    unattended publication, or configure them if publication should require

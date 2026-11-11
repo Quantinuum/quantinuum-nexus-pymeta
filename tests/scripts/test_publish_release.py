@@ -17,8 +17,8 @@ import publish_release
 @pytest.fixture
 def publication(tmp_path):
     files = {
-        "quantinuum_nexus_sdk-2026.1.0-py3-none-any.whl": b"wheel",
-        "quantinuum_nexus_sdk-2026.1.0.tar.gz": b"source",
+        "quantinuum_nexus-2026.1.0-py3-none-any.whl": b"wheel",
+        "quantinuum_nexus-2026.1.0.tar.gz": b"source",
     }
     for name, data in files.items():
         (tmp_path / name).write_bytes(data)

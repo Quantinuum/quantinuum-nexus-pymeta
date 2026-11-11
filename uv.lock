@@ -1136,7 +1136,7 @@ wheels = [
 ]
 
 [[package]]
-name = "quantinuum-nexus-sdk"
+name = "quantinuum-nexus"
 version = "2026.1.0"
 source = { editable = "." }
 dependencies = [

@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import subprocess
 import tomllib
 from pathlib import Path
@@ -52,10 +53,19 @@ def expected_dependabot(api) -> str:
 
 
 def open_files_pr(
-    api, base: str, branch: str, files: dict[str, str], title: str, body: str
+    api,
+    base: str,
+    branch: str,
+    files: dict[str, str],
+    title: str,
+    body: str,
+    *,
+    expected_base: str | None = None,
 ):
     """Create or update a bot-owned branch without overwriting concurrent pushes."""
     base_sha = api.git.get_ref(ref=f"heads/{base}")["object"]["sha"]
+    if expected_base is not None and base_sha != expected_base:
+        raise ValueError("The release branch changed during setup; retry maintenance")
     changed = {}
     for path, content in files.items():
         try:
@@ -115,9 +125,28 @@ def open_files_pr(
         print(prs[0]["html_url"])
 
 
+def rename_distribution(project: str, lock: str, name: str) -> tuple[str, str]:
+    old_name = tomllib.loads(project)["project"]["name"]
+    project, project_count = re.subn(
+        rf'^name = "{re.escape(old_name)}"$',
+        f'name = "{name}"',
+        project,
+        flags=re.MULTILINE,
+    )
+    lock, lock_count = re.subn(
+        rf'(\[\[package\]\]\nname = "){re.escape(old_name)}(")',
+        lambda match: match[1] + name + match[2],
+        lock,
+    )
+    if project_count != 1 or lock_count != 1:
+        raise ValueError("Expected one project name and one metapackage lock entry")
+    return project, lock
+
+
 def bootstrap(api, branch: str, tag: str):
+    has_tooling = False
     try:
-        api.git.get_ref(ref=f"heads/{branch}")
+        sha = api.git.get_ref(ref=f"heads/{branch}")["object"]["sha"]
     except APIError as error:
         if error.status_code != 404:
             raise
@@ -130,34 +159,70 @@ def bootstrap(api, branch: str, tag: str):
             if error.status_code != 404:
                 raise
         else:
-            # Existing release branches receive explicit tooling backports.
-            return
+            has_tooling = True
+    name = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["name"]
+    project = read_file(api, "pyproject.toml", sha)
+    old_name = tomllib.loads(project)["project"]["name"]
+    if has_tooling and old_name == name:
+        return
     paths = subprocess.check_output(
         ["git", "ls-files"], cwd=ROOT, text=True
     ).splitlines()
     files = {
         path: (ROOT / path).read_text()
         for path in paths
-        if path.startswith(
-            ("scripts/", "tests/scripts/", ".github/workflows/", ".github/templates/")
-        )
-        or path
-        in (
-            "MAINTAINING.md",
-            "SETUP.md",
-            "release-please-config.json",
+        if not has_tooling
+        and (
+            path.startswith(
+                (
+                    "scripts/",
+                    "tests/scripts/",
+                    ".github/workflows/",
+                    ".github/templates/",
+                )
+            )
+            or path
+            in (
+                "MAINTAINING.md",
+                "SETUP.md",
+                "release-please-config.json",
+            )
         )
     }
+    if has_tooling:
+        files["release-please-config.json"] = read_file(
+            api, "release-please-config.json", sha
+        )
+    if old_name != name:
+        files["pyproject.toml"], files["uv.lock"] = rename_distribution(
+            project, read_file(api, "uv.lock", sha), name
+        )
+        readme = (
+            read_file(api, "README.md", sha)
+            .replace(old_name, name)
+            .replace(old_name.replace("-", "_"), name.replace("-", "_"))
+        )
+        link_pattern = r"\[GitHub Releases\]\([^)]+\)"
+        release_link = re.search(link_pattern, (ROOT / "README.md").read_text())
+        if release_link:
+            readme = re.sub(link_pattern, lambda _: release_link[0], readme)
+        files["README.md"] = readme
     config = json.loads(files["release-please-config.json"])
     config["packages"]["."]["initial-version"] = tag[1:].rsplit(".", 1)[0] + ".0"
+    for extra in config["packages"]["."].get("extra-files", []):
+        if isinstance(extra, dict) and extra.get("path") == "uv.lock":
+            extra["jsonpath"] = f"$.package[?(@.name.value=='{name}')].version"
     files["release-please-config.json"] = json.dumps(config, indent=2) + "\n"
     open_files_pr(
         api,
         branch,
         f"automation/bootstrap-{branch.split('/')[1]}",
         files,
-        "chore: enable release branch maintenance",
-        f"Install release tooling on {branch}, based on {tag}. Preserve the published dependency pins, lockfile, version, and release manifest.",
+        f"fix: rename metapackage to {name}"
+        if old_name != name
+        else "chore: enable release branch maintenance",
+        f"Prepare {branch}, based on {tag}, using the {name} distribution name. Preserve component pins, locked dependency data, version, and release manifest.",
+        expected_base=sha,
     )
 
 
