@@ -104,7 +104,8 @@ running the script and package suites separately on each matrix cell.
 ## One-time repository setup
 
 1. Create the GitHub repository, add its remote, and push an initial `feat:`
-   commit to `main`. Enable GitHub Actions, Dependabot, and squash merges.
+   commit to `main` with a `Release-As: 2026.1.0` footer to select the first
+   SDK version. Enable GitHub Actions, Dependabot, and squash merges.
 2. Configure the bot account's personal access token as the Actions repository
    secret `HUGRBOT_PAT`. It needs Contents, Pull requests, and Issues read/write
    permissions, plus Actions read permission for RC promotion validation. The
@@ -119,6 +120,11 @@ running the script and package suites separately on each matrix cell.
    bypass. If reviews are required for every PR, a person must approve bot PRs;
    unattended updates need repository rules that permit them after the required
    checks pass.
+
+   Enforcing these protections on a private organization repository requires
+   GitHub Team or Enterprise. If protections are unavailable, follow the same
+   review and CI requirements manually. The bot's checks and release validation
+   still run, but cannot prevent other writers from pushing or merging directly.
 4. Leave the Actions repository variable `PYPI_PUBLISH_ENABLED` unset (or set
    it to `false`). Releases default to GitHub only; no PyPI account, trusted
    publisher, or `pypi` environment is needed for this mode.

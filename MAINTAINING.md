@@ -38,6 +38,12 @@ is `2026.1.0`; subsequent dependency updates produce `2026.1.1`, `2026.1.2`, etc
 The first release and patch release PRs merge automatically after CI passes.
 Other release versions require review.
 
+Select the initial SDK release with a `Release-As: 2026.1.0` footer in a commit
+on `main`, before merging the first release PR. The Python release strategy
+uses this footer to choose the first version. After that release, ordinary
+changes increment the patch number within the series. Do not merge a release
+PR that downgrades the SDK version.
+
 Versions follow `YEAR.SERIES.PATCH`. The year identifies when the series begins;
 the series number starts at 1 each year and increases for each new series,
 without a fixed release schedule or annual limit. The patch number starts at 0.

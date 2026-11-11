@@ -325,6 +325,8 @@ def test_rejects_untested_or_unauthorized_prs(options):
     "version,manifest,allowed",
     [
         ("2026.1.0", {}, True),
+        ("0.1.0", {}, False),
+        ("2026.0.0", {}, False),
         ("2026.1.1", {".": "2026.1.0"}, True),
         ("2026.2.0", {".": "2026.1.0"}, False),
     ],
