@@ -35,14 +35,14 @@ def repository(tmp_path, monkeypatch):
         git("config", key, value)
     (root / ".github").mkdir()
     (root / ".github/preview.json").write_text(
-        json.dumps({"target": "2026.2.0", "channel": "beta"})
+        json.dumps({"target": "26.2.0", "channel": "beta"})
     )
     (root / "pyproject.toml").write_text(
-        '[project]\nname = "tools"\nversion = "2026.1.0"\n'
+        '[project]\nname = "tools"\nversion = "26.1.0"\n'
         'dependencies = ["component==1.0.0"]\n'
     )
     (root / "uv.lock").write_text(
-        'version = 1\n[[package]]\nname = "tools"\nversion = "2026.1.0"\n'
+        'version = 1\n[[package]]\nname = "tools"\nversion = "26.1.0"\n'
     )
     git("add", ".")
     git("commit", "-m", "chore: initialize")
@@ -78,7 +78,7 @@ def test_maintenance_only_push_does_not_create_another_preview(repository, messa
     git("commit", "--allow-empty", "-m", message)
     git("push", "origin", "HEAD:refs/heads/main")
     release.preview()
-    assert git("tag", "--list") == "v2026.2.0b1"
+    assert git("tag", "--list") == "v26.2.0b1"
     publish.assert_not_called()
 
 
@@ -96,17 +96,17 @@ def test_release_commit_followed_by_maintenance_still_creates_preview(
     source = git("rev-parse", "HEAD")
     git("push", "origin", "HEAD:refs/heads/main")
     release.preview()
-    publish.assert_called_once_with("v2026.2.0b2", source)
+    publish.assert_called_once_with("v26.2.0b2", source)
 
 
 @pytest.mark.parametrize(
     ("target", "channel", "tag"),
     [
-        ("2026.2.0", "rc", "v2026.2.0rc1"),
-        ("2026.3.0", "beta", "v2026.3.0b1"),
-        ("2026.5.0", "beta", "v2026.5.0b1"),
-        ("2026.12.0", "rc", "v2026.12.0rc1"),
-        ("2027.1.0", "beta", "v2027.1.0b1"),
+        ("26.2.0", "rc", "v26.2.0rc1"),
+        ("26.3.0", "beta", "v26.3.0b1"),
+        ("26.5.0", "beta", "v26.5.0b1"),
+        ("26.12.0", "rc", "v26.12.0rc1"),
+        ("27.1.0", "beta", "v27.1.0b1"),
     ],
 )
 def test_target_or_channel_transition_creates_first_preview(
@@ -129,7 +129,7 @@ def test_first_preview_does_not_need_a_release_commit(repository):
     _, git, publish = repository
     source = git("rev-parse", "HEAD")
     release.preview()
-    publish.assert_called_once_with("v2026.2.0b1", source)
+    publish.assert_called_once_with("v26.2.0b1", source)
 
 
 def test_manual_request_releases_maintenance_changes(repository):
@@ -139,7 +139,7 @@ def test_manual_request_releases_maintenance_changes(repository):
     source = git("rev-parse", "HEAD")
     git("push", "origin", "HEAD:refs/heads/main")
     release.preview(force=True)
-    publish.assert_called_once_with("v2026.2.0b2", source)
+    publish.assert_called_once_with("v26.2.0b2", source)
 
 
 def test_manual_retry_reuses_existing_tag(repository):
@@ -149,8 +149,8 @@ def test_manual_retry_reuses_existing_tag(repository):
     publish.reset_mock()
     git("switch", "--detach", source)
     release.preview(force=True)
-    assert git("tag", "--list") == "v2026.2.0b1"
-    publish.assert_called_once_with("v2026.2.0b1", source)
+    assert git("tag", "--list") == "v26.2.0b1"
+    publish.assert_called_once_with("v26.2.0b1", source)
 
 
 def test_preview_number_order_is_numeric(repository):
@@ -164,7 +164,7 @@ def test_preview_number_order_is_numeric(repository):
         "-m",
         f"chore: preview\n\nPreview-Source: {source}",
     )
-    git("tag", "v2026.2.0b10")
+    git("tag", "v26.2.0b10")
     git("switch", "--detach", source)
     git("commit", "--allow-empty", "-m", "chore: update tools")
     git("push", "origin", "HEAD:refs/heads/main")
@@ -175,7 +175,7 @@ def test_preview_number_order_is_numeric(repository):
 def test_rc_maintenance_changes_do_not_create_another_candidate(repository):
     root, git, publish = repository
     (root / ".github/preview.json").write_text(
-        json.dumps({"target": "2026.2.0", "channel": "rc"})
+        json.dumps({"target": "26.2.0", "channel": "rc"})
     )
     git("add", ".github/preview.json")
     git("commit", "-m", "chore: freeze")
@@ -183,5 +183,5 @@ def test_rc_maintenance_changes_do_not_create_another_candidate(repository):
     git("commit", "--allow-empty", "-m", "ci: update action")
     git("push", "origin", "HEAD:refs/heads/main")
     release.preview()
-    assert git("tag", "--list") == "v2026.2.0rc1"
+    assert git("tag", "--list") == "v26.2.0rc1"
     publish.assert_not_called()

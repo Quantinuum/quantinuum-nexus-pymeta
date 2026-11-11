@@ -15,7 +15,7 @@ from github_api import all_items, create_client, get_release, set_draft
 from release_policy import published_series, release_branch
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = re.compile(r"(20\d{2})\.([1-9]\d*)\.0(?:(b|rc)([1-9]\d*))?")
+VERSION = re.compile(r"([1-9]\d)\.([1-9]\d*)\.0(?:(b|rc)([1-9]\d*))?")
 
 
 def command(*arguments: str) -> str:
@@ -25,7 +25,7 @@ def command(*arguments: str) -> str:
 def next_preview(target: str, channel: str, tags: list[str]) -> str:
     match = VERSION.fullmatch(target)
     if not match or match[3] or channel not in ("beta", "rc"):
-        raise ValueError("Choose a YEAR.SERIES.0 target and beta or rc channel")
+        raise ValueError("Choose a YY.SERIES.0 target and beta or rc channel")
     if f"v{target}" in tags:
         raise ValueError("This series has already been released")
     suffix = "b" if channel == "beta" else "rc"
@@ -178,7 +178,7 @@ def publish_preview(tag: str, source: str):
 def validate_candidate(tag: str, release: dict, runs: list[dict], sha: str):
     match = VERSION.fullmatch(tag.removeprefix("v"))
     if not tag.startswith("v") or not match or match[3] != "rc":
-        raise ValueError("Promotion requires an RC tag such as v2026.2.0rc1")
+        raise ValueError("Promotion requires an RC tag such as v26.2.0rc1")
     if release["draft"] or not release["prerelease"]:
         raise ValueError("The RC must be a published GitHub prerelease")
     if not any(
@@ -207,7 +207,7 @@ def verify_promotion():
     match = VERSION.fullmatch(version)
     if not match or match[3]:
         return
-    if version == "2026.1.0" and not (ROOT / ".github/stable-candidate.json").exists():
+    if version == "26.1.0" and not (ROOT / ".github/stable-candidate.json").exists():
         return
     candidate = json.loads((ROOT / ".github/stable-candidate.json").read_text())
     if candidate["version"] != version or not re.fullmatch(
@@ -332,7 +332,7 @@ def update_promotion(
 
 
 def promote(tag: str):
-    if not re.fullmatch(r"v20\d{2}\.[1-9]\d*\.0rc[1-9]\d*", tag):
+    if not re.fullmatch(r"v[1-9]\d\.[1-9]\d*\.0rc[1-9]\d*", tag):
         raise ValueError("Promotion requires an RC tag")
     command("git", "fetch", "origin", "--tags")
     sha = command("git", "rev-parse", f"{tag}^{{commit}}")

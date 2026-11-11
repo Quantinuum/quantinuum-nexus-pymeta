@@ -10,8 +10,8 @@ from github_api import create_client, get_release
 
 
 def verify_release(tag: str, api: GhApi, event_name: str, workflow_sha: str) -> str:
-    if not re.fullmatch(r"v20\d{2}\.[1-9]\d*\.\d+(?:(?:b|rc)[1-9]\d*)?", tag):
-        raise ValueError("Expected a YEAR.SERIES.PATCH stable, beta, or RC tag")
+    if not re.fullmatch(r"v[1-9]\d\.[1-9]\d*\.\d+(?:(?:b|rc)[1-9]\d*)?", tag):
+        raise ValueError("Expected a YY.SERIES.PATCH stable, beta, or RC tag")
     release = get_release(api, tag)
     preview = bool(re.search(r"(?:b|rc)[1-9]\d*$", tag))
     if release["prerelease"] != preview:

@@ -1,15 +1,15 @@
 # Maintaining and releasing
 
 Complete [repository setup](SETUP.md) before operating release automation.
-Versions use `YEAR.SERIES.PATCH`; patches retain their year and series even when
-published in a later year.
+Versions use `YY.SERIES.PATCH`, where `YY` is the two-digit year, such as `26`
+for 2026. Patches retain their year and series even when published in a later year.
 
 ## Branches and automatic support
 
 `main` prepares the upcoming series, including betas, release candidates, and
 potentially breaking component updates. Each stable series has a maintenance
-branch named `release/YEAR.SERIES`, for example `release/2026.1`. Individual
-versions are tags such as `v2026.1.3`.
+branch named `release/YY.SERIES`, for example `release/26.1`. Individual
+versions are tags such as `v26.1.3`.
 
 The two highest numbered published stable series receive automatic dependency
 updates and patch releases. Draft releases and previews do not count. Publishing
@@ -31,9 +31,10 @@ entry in the lockfile and the Release Please version target, while preserving
 the branch's version and component pins.
 
 Dependabot checks the six SDK tools daily. On supported stable branches, it
-groups compatible upgrades: minor and patch updates for components at version
-1.0 or later, and patch updates below 1.0. On `main`, it can propose major
-upgrades and pre-1.0 minor upgrades too. All runtime versions remain exact pins.
+groups component patch updates separately from post-1.0 minor updates. Component
+patch updates can merge automatically; minor updates require human review.
+Pre-1.0 minor updates and all major updates are excluded from stable branches.
+On `main`, it can propose major upgrades and pre-1.0 minor upgrades too. All runtime versions remain exact pins.
 The development-and-automation group proposes minor and patch updates separately;
 these require manual review and do not trigger releases on their own.
 GitHub Actions updates target `main`.
@@ -47,10 +48,25 @@ assess that separately.
 
 Release Please runs on numbered release branches. It opens a PR updating the
 version, changelog, manifest, and lockfile. Patch release PRs on supported series
-merge automatically after CI. The first `.0` release of a series requires manual
-review. Ordinary release commits increment only the patch number; the branch and
-package version must identify the same series. Use `fix:` for package corrections
+merge automatically after CI only when runtime dependencies are unchanged or
+contain exclusively component patch upgrades since the previous release. A
+component minor upgrade requires human review of the SDK release PR even after
+the dependency PR has been reviewed and merged. The first `.0` release of a
+series requires manual review. Ordinary release commits increment only the patch
+number; the branch and package version must identify the same series. Use `fix:` for package corrections
 that need a release and `chore:` for routine tooling changes.
+
+## Initial stable release
+
+The initial package version is `26.1.0`. Its Release Please manifest is empty,
+and `bootstrap-sha` marks the start of release history. Create `release/26.1`
+from the reviewed initial state with a commit containing `Release-As: 26.1.0`
+in its footer. Dispatch **Release Please** on that branch, then review and merge
+its first release PR. This initial release can publish without an RC candidate
+record; subsequent new series require a validated RC.
+
+`main` targets the `26.2.0` beta cycle. Once `v26.1.0` is published,
+**Maintain release series** adds its stable Dependabot target.
 
 ## Beta and release candidates
 
@@ -58,16 +74,16 @@ Set `.github/preview.json` on `main` to the intended target and channel:
 
 ```json
 {
-  "target": "2026.2.0",
+  "target": "26.2.0",
   "channel": "beta"
 }
 ```
 
-Targets use `YEAR.SERIES.0`, with a positive series number without leading zeros.
+Targets use `YY.SERIES.0`, with a positive series number without leading zeros.
 Choose a target newer than all published stable series. Series numbers have no
 annual limit; start at 1 for a new year.
 
-Pushes to `main` create numbered previews such as `2026.2.0b1` when `fix:` or
+Pushes to `main` create numbered previews such as `26.2.0b1` when `fix:` or
 `feat:` commits have appeared since the latest preview source. Scoped commits and
 breaking-change markers are supported. Maintenance-only pushes skip subsequent
 previews; the first preview for a target or channel is always created. Dispatch
@@ -86,7 +102,7 @@ must be validated before promotion.
 1. Wait for the selected RC's **Validate and publish** run to succeed and finish
    user validation.
 2. Dispatch **Promote release candidate** from `main`, supplying its exact RC tag,
-   for example `v2026.2.0rc1`. It creates `release/2026.2` from that RC if needed,
+   for example `v26.2.0rc1`. It creates `release/26.2` from that RC if needed,
    then opens a promotion PR against that release branch. Its package metadata
    and lockfile match the RC, with only the SDK version changed. The PR also
    records the RC tag and commit and initializes the branch's Release Please
@@ -107,7 +123,7 @@ this cycle. Backport relevant stable fixes to `main` through reviewed PRs.
 
 ## Manual patches for older series
 
-Open a fix PR against the older `release/YEAR.SERIES` branch and pass its required
+Open a fix PR against the older `release/YY.SERIES` branch and pass its required
 CI and reviews. Dispatch **Release Please** with that branch selected to prepare
 a patch release PR. Review and merge it manually, then dispatch **Release Please**
 on that branch again to create the release. The explicit dispatch permits older

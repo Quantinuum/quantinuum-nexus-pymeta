@@ -138,12 +138,12 @@ def test_explicit_token_overrides_the_default_repository_token(client):
             str(request.url)
             == "https://github.example/api/v3/repos/owner/repo/actions/workflows/publish.yml/dispatches"
         )
-        assert json.loads(request.content) == {"ref": "v2026.1.1"}
+        assert json.loads(request.content) == {"ref": "v26.1.1"}
         return httpx2.Response(204)
 
     stub_requests(dispatcher, respond)
     dispatcher.actions.create_workflow_dispatch(
-        workflow_id="publish.yml", ref="v2026.1.1"
+        workflow_id="publish.yml", ref="v26.1.1"
     )
 
 
@@ -161,13 +161,13 @@ def test_release_lookup_finds_exact_draft_tag_across_pages(client):
         pages.append(page)
         return httpx2.Response(
             200,
-            json=[{"tag_name": "v2026.2.0b10", "draft": True}]
+            json=[{"tag_name": "v26.2.0b10", "draft": True}]
             if page == 1
-            else [{"tag_name": "v2026.2.0b1", "draft": True, "id": 42}],
+            else [{"tag_name": "v26.2.0b1", "draft": True, "id": 42}],
         )
 
     stub_requests(client, respond)
-    assert get_release(client, "v2026.2.0b1")["id"] == 42
+    assert get_release(client, "v26.2.0b1")["id"] == 42
     assert pages == [1, 2]
 
 
@@ -183,7 +183,7 @@ def test_release_lookup_does_not_hide_permission_or_server_errors(client, status
 
     stub_requests(client, respond)
     with pytest.raises(APIError) as error:
-        get_release(client, "v2026.2.0b1")
+        get_release(client, "v26.2.0b1")
     assert error.value.status_code == status
     assert len(requests) == 1
 
@@ -198,7 +198,7 @@ def test_release_lookup_preserves_missing_tag_error_when_no_draft_matches(client
 
     stub_requests(client, respond)
     with pytest.raises(APIError) as error:
-        get_release(client, "v2026.2.0b1")
+        get_release(client, "v26.2.0b1")
     assert error.value.status_code == 404
 
 
@@ -213,5 +213,5 @@ def test_release_lookup_propagates_draft_listing_failure(client):
 
     stub_requests(client, respond)
     with pytest.raises(APIError) as error:
-        get_release(client, "v2026.2.0b1")
+        get_release(client, "v26.2.0b1")
     assert error.value.status_code == 403

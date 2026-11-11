@@ -14,7 +14,7 @@ import auto_merge
 
 BASE = """[project]
 name = "quantinuum-nexus"
-version = "2026.1.0"
+version = "26.1.0"
 dependencies = [
   "guppylang==1.1.3",
   "guppyft==0.4.0",
@@ -34,7 +34,7 @@ def http_error(status):
 class FakeGitHub:
     repository = "owner/repo"
 
-    def __init__(self, branch="release/2026.1", **options):
+    def __init__(self, branch="release/26.1", **options):
         self.options = options
         self.pr = {
             "number": 1,
@@ -78,7 +78,7 @@ class FakeGitHub:
             list_releases=lambda page, per_page: (
                 self.options.get(
                     "releases",
-                    [{"tag_name": "v2026.1.0", "draft": False, "prerelease": False}],
+                    [{"tag_name": "v26.1.0", "draft": False, "prerelease": False}],
                 )
                 if page == 1
                 else []
@@ -112,7 +112,7 @@ class FakeGitHub:
             return json.dumps(self.options["candidate"])
         if path == ".github/preview.json":
             sequence = self.options.get(
-                "config_sequence", [{"target": "2026.2.0", "channel": "beta"}]
+                "config_sequence", [{"target": "26.2.0", "channel": "beta"}]
             )
             config = sequence[min(self.config_reads, len(sequence) - 1)]
             self.config_reads += 1
@@ -120,8 +120,10 @@ class FakeGitHub:
         if path == ".release-please-manifest.json":
             return json.dumps(self.options.get("manifest", {}))
         assert path == "pyproject.toml"
+        if ref.startswith("v"):
+            return self.options.get("released", BASE)
         return (
-            BASE
+            self.options.get("base", BASE)
             if ref == "base"
             else self.options.get(
                 "head", BASE.replace("pytket==2.18.4", "pytket==2.18.5")
@@ -156,7 +158,7 @@ class FakeGitHub:
 
 
 def simulate(
-    branch="release/2026.1",
+    branch="release/26.1",
     event="pull_request",
     conclusion="success",
     tested_base="base",
@@ -185,23 +187,19 @@ def test_merges_a_tested_patch_with_a_sha_guard_and_conventional_title():
     assert api.approvals == []
 
 
-def test_accepts_stable_minor_and_coordinated_updates():
-    assert (
-        len(
-            simulate(
-                head=BASE.replace("pytket==2.18.4", "pytket==2.19.0").replace(
-                    "qnexus==0.51.0", "qnexus==0.51.1"
-                )
-            ).merges
+def test_stable_minor_and_mixed_minor_patch_updates_require_review():
+    api = simulate(
+        head=BASE.replace("pytket==2.18.4", "pytket==2.19.0").replace(
+            "qnexus==0.51.0", "qnexus==0.51.1"
         )
-        == 1
     )
+    assert not api.merges and not api.approvals
 
 
 def test_freezes_dependency_updates_during_series_promotion():
-    assert not simulate(candidate={"version": "2026.1.0"}).merges
-    assert simulate(candidate={"version": "2026.1.0"}, stable_tag=True).merges
-    assert simulate(candidate={"version": "2025.4.0"}).merges
+    assert not simulate(candidate={"version": "26.1.0"}).merges
+    assert simulate(candidate={"version": "26.1.0"}, stable_tag=True).merges
+    assert simulate(candidate={"version": "25.4.0"}).merges
 
 
 def test_approves_and_merges_breaking_updates_into_next():
@@ -231,11 +229,11 @@ def test_reuses_only_an_approval_for_the_current_commit(review_sha, new_approval
 @pytest.mark.parametrize(
     "options",
     [
-        {"config_sequence": [{"target": "2026.2.0", "channel": "rc"}]},
-        {"tags": ["refs/tags/v2026.2.0rc1"]},
-        {"tags": ["refs/tags/v2026.2.0"]},
-        {"config_sequence": [{"target": "2026.0.0", "channel": "beta"}]},
-        {"config_sequence": [{"target": "2026.01.0", "channel": "beta"}]},
+        {"config_sequence": [{"target": "26.2.0", "channel": "rc"}]},
+        {"tags": ["refs/tags/v26.2.0rc1"]},
+        {"tags": ["refs/tags/v26.2.0"]},
+        {"config_sequence": [{"target": "26.0.0", "channel": "beta"}]},
+        {"config_sequence": [{"target": "26.01.0", "channel": "beta"}]},
         {"tested_base": "older-base"},
         {"conclusion": "failure"},
         {"event": "push"},
@@ -251,7 +249,7 @@ def test_next_rejects_ineligible_updates_without_approval(options):
     assert not api.merges and not api.approvals
 
 
-@pytest.mark.parametrize("target", ["2026.5.0", "2026.12.0", "2027.1.0"])
+@pytest.mark.parametrize("target", ["26.5.0", "26.12.0", "27.1.0"])
 def test_next_supports_any_positive_series_and_preserves_rc_freeze(target):
     config = [{"target": target, "channel": "beta"}]
     api = simulate("main", config_sequence=config)
@@ -267,8 +265,8 @@ def test_next_supports_any_positive_series_and_preserves_rc_freeze(target):
         {"base_sequence": ["base", "new-base"]},
         {
             "config_sequence": [
-                {"target": "2026.2.0", "channel": "beta"},
-                {"target": "2026.2.0", "channel": "rc"},
+                {"target": "26.2.0", "channel": "beta"},
+                {"target": "26.2.0", "channel": "rc"},
             ]
         },
     ],
@@ -332,11 +330,11 @@ def test_rejects_untested_or_unauthorized_prs(options):
 @pytest.mark.parametrize(
     "version,manifest,allowed",
     [
-        ("2026.1.0", {}, False),
+        ("26.1.0", {}, False),
         ("0.1.0", {}, False),
-        ("2026.0.0", {}, False),
-        ("2026.1.1", {".": "2026.1.0"}, True),
-        ("2026.2.0", {".": "2026.1.0"}, False),
+        ("26.0.0", {}, False),
+        ("26.1.1", {".": "26.1.0"}, True),
+        ("26.2.0", {".": "26.1.0"}, False),
     ],
 )
 def test_release_bot_can_merge_only_the_initial_or_patch_release(
@@ -347,7 +345,7 @@ def test_release_bot_can_merge_only_the_initial_or_patch_release(
             "user": {"login": BOT},
             "head": {
                 "sha": "tested",
-                "ref": "release-please--branches--release/2026.1",
+                "ref": "release-please--branches--release/26.1",
                 "repo": {"full_name": "owner/repo"},
             },
         },
@@ -357,7 +355,7 @@ def test_release_bot_can_merge_only_the_initial_or_patch_release(
             "CHANGELOG.md",
             ".release-please-manifest.json",
         ],
-        head=BASE.replace('version = "2026.1.0"', f'version = "{version}"'),
+        head=BASE.replace('version = "26.1.0"', f'version = "{version}"'),
         manifest=manifest,
     )
     assert bool(api.merges) == allowed
@@ -366,14 +364,14 @@ def test_release_bot_can_merge_only_the_initial_or_patch_release(
 @pytest.mark.parametrize(
     "before,after,allowed",
     [
-        ("2026.12.0", "2026.12.1", True),
-        ("2026.12.1", "2026.13.0", False),
-        ("2026.12.1", "2027.1.0", False),
+        ("26.12.0", "26.12.1", True),
+        ("26.12.1", "26.13.0", False),
+        ("26.12.1", "27.1.0", False),
     ],
 )
 def test_patch_automation_keeps_the_same_year_and_series(before, after, allowed):
-    base = BASE.replace('version = "2026.1.0"', f'version = "{before}"')
-    head = BASE.replace('version = "2026.1.0"', f'version = "{after}"')
+    base = BASE.replace('version = "26.1.0"', f'version = "{before}"')
+    head = BASE.replace('version = "26.1.0"', f'version = "{after}"')
     assert auto_merge.release_update_allowed(base, head, {".": before}) == allowed
 
 
@@ -399,12 +397,12 @@ def test_cli_reads_the_workflow_event_and_uses_the_token_identity(
             "user": {"login": "hugrbot"},
             "head": {
                 "sha": "tested",
-                "ref": "release-please--branches--release/2026.1",
+                "ref": "release-please--branches--release/26.1",
                 "repo": {"full_name": "owner/repo"},
             },
         },
-        head=BASE.replace('version = "2026.1.0"', 'version = "2026.1.1"'),
-        manifest={".": "2026.1.0"},
+        head=BASE.replace('version = "26.1.0"', 'version = "26.1.1"'),
+        manifest={".": "26.1.0"},
     )
     api.users = SimpleNamespace(
         get_authenticated=Mock(return_value={"login": token_login})
@@ -438,7 +436,7 @@ def test_cli_reads_the_workflow_event_and_uses_the_token_identity(
 def test_retired_series_never_automatically_merges_dependency_or_release_prs():
     releases = [
         {"tag_name": tag, "draft": False, "prerelease": False}
-        for tag in ("v2026.1.9", "v2026.2.0", "v2026.3.0")
+        for tag in ("v26.1.9", "v26.2.0", "v26.3.0")
     ]
     api = simulate(releases=releases)
     assert not api.merges and not api.approvals
@@ -448,12 +446,12 @@ def test_retired_series_never_automatically_merges_dependency_or_release_prs():
             "user": {"login": BOT},
             "head": {
                 "sha": "tested",
-                "ref": "release-please--branches--release/2026.1",
+                "ref": "release-please--branches--release/26.1",
                 "repo": {"full_name": "owner/repo"},
             },
         },
-        head=BASE.replace('version = "2026.1.0"', 'version = "2026.1.1"'),
-        manifest={".": "2026.1.0"},
+        head=BASE.replace('version = "26.1.0"', 'version = "26.1.1"'),
+        manifest={".": "26.1.0"},
     )
     assert not api.merges and not api.approvals
 
@@ -507,3 +505,71 @@ def test_support_window_rotation_merges_only_exact_generated_configuration(monke
         )
         assert bool(api.merges) == allowed
         assert not api.approvals
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("guppylang==1.1.3", "guppylang==1.1.4"),
+        ("guppyft==0.4.0", "guppyft==0.4.1"),
+        ("guppyalgos==0.2.0", "guppyalgos==0.2.1"),
+        ("selene-sim==0.3.2", "selene-sim==0.3.3"),
+        ("pytket==2.18.4", "pytket==2.18.5"),
+        ("qnexus==0.51.0", "qnexus==0.51.1"),
+    ],
+)
+def test_stable_automatically_merges_component_patch_updates(old, new):
+    assert simulate(head=BASE.replace(old, new)).merges
+
+
+@pytest.mark.parametrize(
+    "component,automatic",
+    [
+        ("pytket==2.18.5", True),
+        ("pytket==2.19.0", False),
+        ("pytket==3.0.0", False),
+        ("pytket==2.18.3", False),
+        ("pytket==2.19.0rc1", False),
+    ],
+)
+def test_release_pr_checks_component_changes_since_last_release(component, automatic):
+    updated = BASE.replace("pytket==2.18.4", component)
+    api = simulate(
+        base=updated,
+        head=updated.replace('version = "26.1.0"', 'version = "26.1.1"'),
+        released=BASE,
+        manifest={".": "26.1.0"},
+        pr={
+            "user": {"login": BOT},
+            "head": {
+                "sha": "tested",
+                "ref": "release-please--branches--release/26.1",
+                "repo": {"full_name": "owner/repo"},
+            },
+        },
+    )
+    assert bool(api.merges) is automatic
+    assert ("pyproject.toml", "v26.1.0") in api.requests
+
+
+def test_release_pr_with_mixed_minor_and_patch_component_changes_requires_review():
+    updated = BASE.replace("pytket==2.18.4", "pytket==2.19.0").replace(
+        "qnexus==0.51.0", "qnexus==0.51.1"
+    )
+    assert not auto_merge.release_dependencies_allowed(
+        FakeGitHub(), updated, {".": "26.1.0"}
+    )
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("pytket==2.18.4", "pytket==2.19.0"),
+        ("pytket==2.18.4", "pytket==3.0.0"),
+        ("guppyft==0.4.0", "guppyft==0.5.0"),
+        ("guppyft==0.4.0", "guppyft==1.0.0"),
+    ],
+)
+def test_active_beta_automatically_merges_all_component_update_levels(old, new):
+    api = simulate("main", head=BASE.replace(old, new))
+    assert api.merges and api.approvals

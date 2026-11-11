@@ -4,14 +4,14 @@ import re
 
 from github_api import all_items
 
-STABLE = re.compile(r"v(20\d{2})\.([1-9]\d*)\.(0|[1-9]\d*)")
-BRANCH = re.compile(r"release/(20\d{2})\.([1-9]\d*)")
+STABLE = re.compile(r"v([1-9]\d)\.([1-9]\d*)\.(0|[1-9]\d*)")
+BRANCH = re.compile(r"release/([1-9]\d)\.([1-9]\d*)")
 
 
 def release_branch(version: str) -> str:
     match = STABLE.fullmatch("v" + version)
     if not match:
-        raise ValueError("Expected a stable YEAR.SERIES.PATCH version")
+        raise ValueError("Expected a stable YY.SERIES.PATCH version")
     return f"release/{match[1]}.{match[2]}"
 
 

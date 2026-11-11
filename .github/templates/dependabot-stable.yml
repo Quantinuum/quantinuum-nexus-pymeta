@@ -8,7 +8,7 @@
       prefix-development: chore
       include: scope
     groups:
-      tools:
+      tools-patches:
         patterns:
           - guppylang
           - guppyft
@@ -16,7 +16,16 @@
           - selene-sim
           - pytket
           - qnexus
-        update-types: [minor, patch]
+        update-types: [patch]
+      tools-minor:
+        patterns:
+          - guppylang
+          - guppyft
+          - guppyalgos
+          - selene-sim
+          - pytket
+          - qnexus
+        update-types: [minor]
       development-and-automation:
         patterns: ['*']
         update-types: [minor, patch]

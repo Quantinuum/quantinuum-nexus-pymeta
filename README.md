@@ -108,9 +108,9 @@ release does not change an already published SDK release.
 
 ## Release cycle
 
-SDK versions follow **`YEAR.SERIES.PATCH`** calendar versioning:
+SDK versions follow **`YY.SERIES.PATCH`** calendar versioning:
 
-- **YEAR** is the year the release series begins.
+- **YY** is the two-digit year the release series begins, such as `26` for 2026.
 - **SERIES** starts at 1 each year and increases for each new release series.
 - **PATCH** starts at 0 and increases for compatible updates within a series.
 
@@ -131,21 +131,23 @@ only for components below 1.0. Major component updates and pre-1.0 minor updates
 are reserved for the upcoming series. A daily update check does not imply a new
 SDK release every day.
 
-The two most recent stable series receive automatic compatible dependency updates
-and patch releases. Older series can receive manually initiated patches. Stable
+For the two most recent stable series, component patch updates and their SDK
+patch releases merge automatically after CI. Post-1.0 component minor updates
+require human review of both the dependency PR and the resulting SDK patch
+release PR. Older series can receive manually initiated patches. Stable
 patches can continue while the next series is in preview.
 
 ### Betas and release candidates
 
 Upcoming release series are offered as opt-in GitHub prereleases:
 
-- **Beta** (`YEAR.SERIES.0bN`): a preview whose component versions can still
+- **Beta** (`YY.SERIES.0bN`): a preview whose component versions can still
   change, including potentially breaking updates. Further previews increment
   the beta number.
-- **Release candidate** (`YEAR.SERIES.0rcN`): the intended final component
+- **Release candidate** (`YY.SERIES.0rcN`): the intended final component
   set, frozen except for reviewed fixes to blocking issues. Further fixes
   produce additional numbered release candidates.
-- **Stable** (`YEAR.SERIES.0`): the first stable release in a series, using the
+- **Stable** (`YY.SERIES.0`): the first stable release in a series, using the
   chosen release candidate's exact direct dependency pins.
 
 To try a preview from GitHub, download and install its wheel as described

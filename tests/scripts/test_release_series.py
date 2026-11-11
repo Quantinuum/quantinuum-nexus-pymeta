@@ -10,39 +10,41 @@ import release_series as release
 
 class TestPreview:
     def test_beta_and_rc_have_independent_monotonic_numbers(self):
-        tags = ["v2026.1.0", "v2026.2.0b1", "v2026.2.0b3", "v2027.1.0b9"]
-        assert release.next_preview("2026.2.0", "beta", tags) == "2026.2.0b4"
-        assert release.next_preview("2026.2.0", "rc", tags) == "2026.2.0rc1"
+        tags = ["v26.1.0", "v26.2.0b1", "v26.2.0b3", "v27.1.0b9"]
+        assert release.next_preview("26.2.0", "beta", tags) == "26.2.0b4"
+        assert release.next_preview("26.2.0", "rc", tags) == "26.2.0rc1"
         assert (
-            release.next_preview("2026.2.0", "rc", tags + ["v2026.2.0rc2"])
-            == "2026.2.0rc3"
+            release.next_preview("26.2.0", "rc", tags + ["v26.2.0rc2"]) == "26.2.0rc3"
         )
-        assert release.next_preview("2027.1.0", "rc", tags) == "2027.1.0rc1"
+        assert release.next_preview("27.1.0", "rc", tags) == "27.1.0rc1"
 
     def test_freeze_prevents_returning_to_beta(self):
         with pytest.raises(ValueError, match="freeze"):
-            release.next_preview("2026.2.0", "beta", ["v2026.2.0rc1"])
+            release.next_preview("26.2.0", "beta", ["v26.2.0rc1"])
 
     def test_final_release_closes_the_preview_series(self):
         for channel in ("beta", "rc"):
             with pytest.raises(ValueError, match="already been released"):
-                release.next_preview("2026.2.0", channel, ["v2026.2.0"])
+                release.next_preview("26.2.0", channel, ["v26.2.0"])
 
     def test_invalid_targets_and_channels_are_rejected(self):
         for target, channel in [
-            ("2026.0.0", "beta"),
-            ("2026.01.0", "beta"),
-            ("2026.-1.0", "beta"),
-            ("2026.2.1", "rc"),
-            ("2026.2.0b1", "beta"),
-            ("2026.2.0", "nightly"),
+            ("26.0.0", "beta"),
+            ("26.01.0", "beta"),
+            ("26.-1.0", "beta"),
+            ("2026.2.0", "beta"),
+            ("6.2.0", "beta"),
+            ("06.2.0", "beta"),
+            ("26.2.1", "rc"),
+            ("26.2.0b1", "beta"),
+            ("26.2.0", "nightly"),
         ]:
             with pytest.raises(ValueError):
                 release.next_preview(target, channel, [])
 
-    @pytest.mark.parametrize("target", ["2026.5.0", "2026.12.0", "2027.1.0"])
+    @pytest.mark.parametrize("target", ["26.5.0", "26.12.0", "27.1.0"])
     def test_series_have_no_annual_limit_and_isolate_preview_numbers(self, target):
-        tags = ["v2026.1.0b99", "v2026.2.0rc9", f"v{target}b2"]
+        tags = ["v26.1.0b99", "v26.2.0rc9", f"v{target}b2"]
         assert release.next_preview(target, "beta", tags) == f"{target}b3"
         assert release.next_preview(target, "rc", tags) == f"{target}rc1"
         with pytest.raises(ValueError, match="freeze"):
@@ -58,17 +60,17 @@ class TestPreview:
             with patch.object(release, "ROOT") as root:
                 (
                     root / ".github/preview.json"
-                ).read_text.return_value = '{"target":"2026.2.0","channel":"beta"}'
+                ).read_text.return_value = '{"target":"26.2.0","channel":"beta"}'
                 command.side_effect = [
                     "source-sha",
                     "",
                     "source-sha",
-                    "v2026.2.0b1",
-                    "chore: prepare 2026.2.0b1\n\nPreview-Source: source-sha",
+                    "v26.2.0b1",
+                    "chore: prepare 26.2.0b1\n\nPreview-Source: source-sha",
                 ]
                 with patch.object(release, "write_version") as write:
                     release.preview()
-            publish.assert_called_once_with("v2026.2.0b1", "source-sha")
+            publish.assert_called_once_with("v26.2.0b1", "source-sha")
             write.assert_not_called()
 
     def test_outdated_push_does_not_replace_a_newer_preview(self):
@@ -79,26 +81,26 @@ class TestPreview:
             with patch.object(release, "ROOT") as root:
                 (
                     root / ".github/preview.json"
-                ).read_text.return_value = '{"target":"2026.2.0","channel":"beta"}'
+                ).read_text.return_value = '{"target":"26.2.0","channel":"beta"}'
                 command.side_effect = ["old-source", "", "new-source"]
                 release.preview()
             publish.assert_not_called()
 
 
 class TestStamp:
-    project = '[project]\nname = "tools"\nversion = "2026.1.0"\ndependencies = ["component==1.2.3"]\n'
-    lock = 'version = 1\n[[package]]\nname = "tools"\nversion = "2026.1.0"\n[[package]]\nname = "component"\nversion = "1.2.3"\n'
+    project = '[project]\nname = "tools"\nversion = "26.1.0"\ndependencies = ["component==1.2.3"]\n'
+    lock = 'version = 1\n[[package]]\nname = "tools"\nversion = "26.1.0"\n[[package]]\nname = "component"\nversion = "1.2.3"\n'
 
     def test_preview_and_promotion_preserve_all_dependency_data(self):
         preview_project, preview_lock = release.stamp(
-            self.project, self.lock, "2026.2.0rc2"
+            self.project, self.lock, "26.2.0rc2"
         )
         stable_project, stable_lock = release.stamp(
-            preview_project, preview_lock, "2026.2.0"
+            preview_project, preview_lock, "26.2.0"
         )
         for project, lock, version in [
-            (preview_project, preview_lock, "2026.2.0rc2"),
-            (stable_project, stable_lock, "2026.2.0"),
+            (preview_project, preview_lock, "26.2.0rc2"),
+            (stable_project, stable_lock, "26.2.0"),
         ]:
             assert tomllib.loads(project)["project"]["dependencies"] == [
                 "component==1.2.3"
@@ -112,15 +114,15 @@ class TestStamp:
 
     def test_loose_pins_and_missing_lock_entry_are_rejected(self):
         with pytest.raises(ValueError, match="exact pin"):
-            release.stamp(self.project.replace("==", ">="), self.lock, "2026.2.0b1")
+            release.stamp(self.project.replace("==", ">="), self.lock, "26.2.0b1")
         with pytest.raises(ValueError, match="metapackage entry"):
-            release.stamp(self.project, "version = 1\n", "2026.2.0b1")
+            release.stamp(self.project, "version = 1\n", "26.2.0b1")
 
     def test_final_publication_rejects_pin_or_lock_drift_since_the_rc(self):
         candidate_project, candidate_lock = release.stamp(
-            self.project, self.lock, "2026.2.0rc1"
+            self.project, self.lock, "26.2.0rc1"
         )
-        project, lock = release.stamp(candidate_project, candidate_lock, "2026.2.0")
+        project, lock = release.stamp(candidate_project, candidate_lock, "26.2.0")
         release.verify_candidate_files(project, lock, candidate_project, candidate_lock)
         with pytest.raises(ValueError, match="metadata differs"):
             release.verify_candidate_files(
@@ -143,22 +145,22 @@ class TestPromotion:
         published = {"draft": False, "prerelease": True}
         success = [{"head_sha": "candidate", "conclusion": "success"}]
         assert (
-            release.validate_candidate("v2026.2.0rc2", published, success, "candidate")
-            == "2026.2.0"
+            release.validate_candidate("v26.2.0rc2", published, success, "candidate")
+            == "26.2.0"
         )
         for tag, metadata, runs in [
-            ("v2026.2.0b2", published, success),
-            ("v2026.2.0", published, success),
-            ("v2026.2.0rc2", {"draft": True, "prerelease": True}, success),
-            ("v2026.2.0rc2", {"draft": False, "prerelease": False}, success),
-            ("v2026.2.0rc2", published, []),
+            ("v26.2.0b2", published, success),
+            ("v26.2.0", published, success),
+            ("v26.2.0rc2", {"draft": True, "prerelease": True}, success),
+            ("v26.2.0rc2", {"draft": False, "prerelease": False}, success),
+            ("v26.2.0rc2", published, []),
             (
-                "v2026.2.0rc2",
+                "v26.2.0rc2",
                 published,
                 [{"head_sha": "other", "conclusion": "success"}],
             ),
             (
-                "v2026.2.0rc2",
+                "v26.2.0rc2",
                 published,
                 [{"head_sha": "candidate", "conclusion": "failure"}],
             ),
@@ -186,13 +188,13 @@ def test_preview_creates_a_release_only_when_it_is_missing(status):
     ):
         if status in (403, 500):
             with pytest.raises(APIError):
-                release.publish_preview("v2026.2.0b1", "source-sha")
+                release.publish_preview("v26.2.0b1", "source-sha")
         else:
-            release.publish_preview("v2026.2.0b1", "source-sha")
+            release.publish_preview("v26.2.0b1", "source-sha")
     if status == 404:
-        api.git.get_ref.assert_called_once_with(ref="tags/v2026.2.0b1")
+        api.git.get_ref.assert_called_once_with(ref="tags/v26.2.0b1")
         arguments = api.repos.create_release.call_args.kwargs
-        assert arguments["tag_name"] == "v2026.2.0b1"
+        assert arguments["tag_name"] == "v26.2.0b1"
         assert arguments["prerelease"] is True
         assert arguments["make_latest"] == "false"
         assert "source-sha" in arguments["body"]
@@ -216,7 +218,7 @@ def test_preview_requires_an_existing_remote_tag():
         patch.object(release, "create_client", return_value=api),
         pytest.raises(APIError),
     ):
-        release.publish_preview("v2026.2.0b1", "source-sha")
+        release.publish_preview("v26.2.0b1", "source-sha")
     api.repos.create_release.assert_not_called()
 
 
@@ -229,8 +231,8 @@ def test_main_maintenance_push_skips_a_target_already_released():
     ):
         (
             root / ".github/preview.json"
-        ).read_text.return_value = '{"target":"2026.2.0","channel":"rc"}'
-        command.side_effect = ["source", "", "source", "v2026.2.0"]
+        ).read_text.return_value = '{"target":"26.2.0","channel":"rc"}'
+        command.side_effect = ["source", "", "source", "v26.2.0"]
         release.preview()
     publish.assert_not_called()
     write.assert_not_called()
@@ -244,13 +246,13 @@ def test_preview_retry_reuses_draft_not_returned_by_tag_lookup():
     api = Mock()
     api.repos.get_release_by_tag.side_effect = APIError("Not Found", status_code=404)
     api.repos.list_releases.side_effect = lambda page, per_page: (
-        [{"id": 42, "tag_name": "v2026.2.0b1", "draft": True}] if page == 1 else []
+        [{"id": 42, "tag_name": "v26.2.0b1", "draft": True}] if page == 1 else []
     )
     with (
         patch.object(release, "create_client", return_value=api),
         patch.object(release, "dispatch_release") as dispatch,
     ):
-        release.publish_preview("v2026.2.0b1", "source")
-    dispatch.assert_called_once_with(api, "v2026.2.0b1")
+        release.publish_preview("v26.2.0b1", "source")
+    dispatch.assert_called_once_with(api, "v26.2.0b1")
     api.repos.create_release.assert_not_called()
     api.git.get_ref.assert_not_called()

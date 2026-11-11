@@ -4,7 +4,7 @@
     ".": {
       "release-type": "python",
       "versioning": "always-bump-patch",
-      "initial-version": "2026.1.0",
+      "initial-version": "26.1.0",
       "include-component-in-tag": false,
       "extra-files": [
         {
@@ -16,5 +16,6 @@
       "draft": true,
       "force-tag-creation": true
     }
-  }
+  },
+  "bootstrap-sha": "6142d4c7f46dc3cf2e857759b879b61760e11376"
 }

@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import tomllib
 from pathlib import Path
 
 from ghapi.core import APIError, GhApi
@@ -40,20 +41,53 @@ def dependency_update_allowed(base: str, head: str, beta: bool) -> bool:
             return False
         if old != new:
             changed = True
-            if new <= old or (
-                not beta and (old[0] != new[0] or (old[0] == 0 and old[1] != new[1]))
-            ):
+            if new <= old or (not beta and old[:2] != new[:2]):
                 return False
         base = pattern.sub(f'"{tool}==VERSION"', base)
         head = pattern.sub(f'"{tool}==VERSION"', head)
     return changed and base == head
 
 
+def release_dependencies_allowed(api: GhApi, head: str, manifest: dict) -> bool:
+    version = manifest.get(".")
+    if not version:
+        return False
+    try:
+        previous = read_file(api, "pyproject.toml", f"v{version}")
+    except APIError as error:
+        if error.status_code != 404:
+            raise
+        return False
+
+    def pins(text):
+        result = {}
+        for requirement in tomllib.loads(text)["project"]["dependencies"]:
+            name, separator, value = requirement.partition("==")
+            parsed = version_parts(value)
+            if not separator or parsed is None or name in result:
+                return None
+            result[name] = parsed
+        return result
+
+    before, after = pins(previous), pins(head)
+    if before is None or after is None or before.keys() != after.keys():
+        return False
+    return all(
+        before[name] == after[name]
+        or (
+            name in TOOLS
+            and after[name] > before[name]
+            and after[name][:2] == before[name][:2]
+        )
+        for name in before
+    )
+
+
 def beta_state(api: GhApi):
     sha = api.git.get_ref(ref="heads/main")["object"]["sha"]
     config = json.loads(read_file(api, ".github/preview.json", sha))
     target = config["target"]
-    if config["channel"] != "beta" or not re.fullmatch(r"20\d{2}\.[1-9]\d*\.0", target):
+    if config["channel"] != "beta" or not re.fullmatch(r"[1-9]\d\.[1-9]\d*\.0", target):
         return None
     tags = api.git.list_matching_refs(ref=f"tags/v{target}")
     if any(
@@ -92,6 +126,7 @@ def release_update_allowed(base: str, head: str, manifest: dict) -> bool:
     patch = before and after and before[:2] == after[:2] and after[2] == before[2] + 1
     return bool(
         patch
+        and manifest.get(".") == package_version(base)
         and PROJECT_VERSION.sub('version = "VERSION"', base)
         == PROJECT_VERSION.sub('version = "VERSION"', head)
     )
@@ -179,7 +214,9 @@ def merge_updates(run: dict, api: GhApi, release_bot: str, repository: str):
             manifest = json.loads(
                 read_file(api, ".release-please-manifest.json", pr["base"]["sha"])
             )
-            eligible = release_update_allowed(base, head, manifest)
+            eligible = release_update_allowed(
+                base, head, manifest
+            ) and release_dependencies_allowed(api, head, manifest)
             if eligible:
                 check_release_branch(pr["base"]["ref"], package_version(head))
         if not eligible:

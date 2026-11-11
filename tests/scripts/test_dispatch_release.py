@@ -8,7 +8,7 @@ from ghapi.core import APIError
 import dispatch_release
 
 
-@pytest.mark.parametrize("tag", ["v2026.1.1", "v2026.2.0rc1"])
+@pytest.mark.parametrize("tag", ["v26.1.1", "v26.2.0rc1"])
 @pytest.mark.parametrize("lookup_missing", [False, True])
 def test_dispatch_uses_workflow_token_and_verifies_with_repository_client(
     monkeypatch, tag, lookup_missing
@@ -55,7 +55,7 @@ def test_invalid_release_never_dispatches(monkeypatch):
         patch.object(dispatch_release, "create_client") as create,
         pytest.raises(ValueError, match="status"),
     ):
-        dispatch_release.dispatch_release(repository, "v2026.2.0rc1")
+        dispatch_release.dispatch_release(repository, "v26.2.0rc1")
     create.assert_not_called()
     repository.actions.create_workflow_dispatch.assert_not_called()
 
@@ -73,6 +73,6 @@ def test_missing_workflow_token_does_not_fall_back_to_repository_token(monkeypat
         patch.object(dispatch_release, "create_client") as create,
         pytest.raises(KeyError, match="WORKFLOW_DISPATCH_TOKEN"),
     ):
-        dispatch_release.dispatch_release(repository, "v2026.1.1")
+        dispatch_release.dispatch_release(repository, "v26.1.1")
     create.assert_not_called()
     repository.actions.create_workflow_dispatch.assert_not_called()

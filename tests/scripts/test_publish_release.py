@@ -17,8 +17,8 @@ import publish_release
 @pytest.fixture
 def publication(tmp_path):
     files = {
-        "quantinuum_nexus-2026.1.0-py3-none-any.whl": b"wheel",
-        "quantinuum_nexus-2026.1.0.tar.gz": b"source",
+        "quantinuum_nexus-26.1.0-py3-none-any.whl": b"wheel",
+        "quantinuum_nexus-26.1.0.tar.gz": b"source",
     }
     for name, data in files.items():
         (tmp_path / name).write_bytes(data)
@@ -39,7 +39,7 @@ def publication(tmp_path):
 
 def test_uploads_both_distributions_as_binary_data(publication):
     api, directory, files = publication
-    publish_release.publish_assets(api, "v2026.1.0", "verified", directory)
+    publish_release.publish_assets(api, "v26.1.0", "verified", directory)
     assert api.call_count == 2
     for call in api.call_args_list:
         assert call.args == ("https://uploads.github.com/releases/7/assets", "POST")
@@ -86,7 +86,7 @@ def test_real_client_uploads_authenticated_binary_requests(publication):
         return httpx2.Response(200, json=[])
 
     api.transport.client = httpx2.Client(transport=httpx2.MockTransport(respond))
-    publish_release.publish_assets(api, "v2026.1.0", "verified", directory)
+    publish_release.publish_assets(api, "v26.1.0", "verified", directory)
     assert set(uploaded) == set(files)
 
 
@@ -106,7 +106,7 @@ def test_retry_reuses_matching_assets_and_only_uploads_missing_files(
     api.repos.list_release_assets.side_effect = lambda **kwargs: (
         assets if kwargs["page"] == 1 else []
     )
-    publish_release.publish_assets(api, "v2026.1.0", "verified", directory)
+    publish_release.publish_assets(api, "v26.1.0", "verified", directory)
     assert api.call_count == 2 - existing_count
 
 
@@ -125,7 +125,7 @@ def test_existing_conflict_fails_before_any_upload(publication, state, digest):
         assets if kwargs["page"] == 1 else []
     )
     with pytest.raises(ValueError, match="Existing release asset differs"):
-        publish_release.publish_assets(api, "v2026.1.0", "verified", directory)
+        publish_release.publish_assets(api, "v26.1.0", "verified", directory)
     api.assert_not_called()
 
 
@@ -139,7 +139,7 @@ def test_rejects_unverified_tags_drafts_and_incomplete_builds(publication, probl
     else:
         (directory / "extra.whl").write_bytes(b"extra")
     with pytest.raises(ValueError):
-        publish_release.publish_assets(api, "v2026.1.0", "verified", directory)
+        publish_release.publish_assets(api, "v26.1.0", "verified", directory)
     api.assert_not_called()
 
 
@@ -147,7 +147,7 @@ def test_failed_upload_stops_without_deleting_assets(publication):
     api, directory, _ = publication
     api.side_effect = APIError("Upload failed", status_code=502)
     with pytest.raises(APIError):
-        publish_release.publish_assets(api, "v2026.1.0", "verified", directory)
+        publish_release.publish_assets(api, "v26.1.0", "verified", directory)
     assert api.call_count == 1
     api.repos.delete_release_asset.assert_not_called()
 
@@ -157,7 +157,7 @@ def test_uploaded_digest_is_verified(publication):
     api.side_effect = None
     api.return_value = {"state": "uploaded", "digest": "sha256:different"}
     with pytest.raises(ValueError, match="failed verification"):
-        publish_release.publish_assets(api, "v2026.1.0", "verified", directory)
+        publish_release.publish_assets(api, "v26.1.0", "verified", directory)
     assert api.call_count == 1
 
 
@@ -177,7 +177,7 @@ def test_cli_uses_the_verified_release_commit(
     else:
         monkeypatch.chdir(directory)
         monkeypatch.delenv("DIST_DIR", raising=False)
-    monkeypatch.setenv("TAG", "v2026.1.0")
+    monkeypatch.setenv("TAG", "v26.1.0")
     monkeypatch.setenv("RELEASE_SHA", "verified")
     monkeypatch.setattr("github_api.create_client", lambda: api)
     runpy.run_path(str(Path(publish_release.__file__)), run_name="__main__")
@@ -187,10 +187,10 @@ def test_cli_uses_the_verified_release_commit(
 @pytest.mark.parametrize(
     "newest,tag,preview,expected",
     [
-        ("v2026.2.0", "v2026.1.1", False, "false"),
-        ("v2026.2.0", "v2026.2.1", False, "true"),
-        (None, "v2026.1.0", False, "true"),
-        (None, "v2026.2.0rc1", True, "false"),
+        ("v26.2.0", "v26.1.1", False, "false"),
+        ("v26.2.0", "v26.2.1", False, "true"),
+        (None, "v26.1.0", False, "true"),
+        (None, "v26.2.0rc1", True, "false"),
     ],
 )
 def test_draft_publication_preserves_latest_for_older_series(
@@ -213,7 +213,7 @@ def test_failed_draft_upload_never_publishes_release(publication):
     api.repos.get_release_by_tag.return_value["draft"] = True
     api.side_effect = APIError("Upload failed", status_code=502)
     with pytest.raises(APIError):
-        publish_release.publish_assets(api, "v2026.1.1", "verified", directory)
+        publish_release.publish_assets(api, "v26.1.1", "verified", directory)
     api.repos.update_release.assert_not_called()
 
 
@@ -245,13 +245,13 @@ def test_publication_finds_draft_missing_from_tag_lookup(publication):
         "id": 42,
         "draft": True,
         "prerelease": True,
-        "tag_name": "v2026.2.0b1",
+        "tag_name": "v26.2.0b1",
         "upload_url": "https://uploads.github.com/releases/42/assets",
     }
     api.repos.list_releases.side_effect = lambda page, per_page: (
         [draft] if page == 1 else []
     )
-    publish_release.publish_assets(api, "v2026.2.0b1", "verified", directory)
+    publish_release.publish_assets(api, "v26.2.0b1", "verified", directory)
     api.repos.update_release.assert_called_once_with(
         release_id=42, draft=False, make_latest="false"
     )

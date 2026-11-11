@@ -13,10 +13,10 @@ import release_series as release
 
 
 class TestPromotionUpdate:
-    target = "2026.2.0"
-    branch = "promote-2026.2.0"
-    project = '[project]\nname = "tools"\nversion = "2026.1.0"\ndependencies = ["component==1.0.0"]\n'
-    lock = 'version = 1\n[[package]]\nname = "tools"\nversion = "2026.1.0"\n[[package]]\nname = "component"\nversion = "1.0.0"\n'
+    target = "26.2.0"
+    branch = "promote-26.2.0"
+    project = '[project]\nname = "tools"\nversion = "26.1.0"\ndependencies = ["component==1.0.0"]\n'
+    lock = 'version = 1\n[[package]]\nname = "tools"\nversion = "26.1.0"\n[[package]]\nname = "component"\nversion = "1.0.0"\n'
 
     def git(self, root, *arguments):
         return subprocess.check_output(
@@ -56,7 +56,7 @@ class TestPromotionUpdate:
         (seed / ".github").mkdir()
         (seed / ".github/preview.json").write_text("{}\n")
         (seed / "release-please-config.json").write_text(
-            '{"packages": {".": {"initial-version": "2026.1.0"}}}\n'
+            '{"packages": {".": {"initial-version": "26.1.0"}}}\n'
         )
         (seed / "pyproject.toml").write_text(self.project)
         (seed / "uv.lock").write_text(self.lock)
@@ -253,7 +253,7 @@ class TestPromotionUpdate:
         self.api.pulls.update.assert_not_called()
 
     @pytest.mark.parametrize(
-        "setup_repository", ["2026.5.0", "2026.12.0", "2027.1.0"], indirect=True
+        "setup_repository", ["26.5.0", "26.12.0", "27.1.0"], indirect=True
     )
     def test_promotes_higher_series_and_new_year_with_exact_candidate(self):
         self.promote(2)
@@ -333,7 +333,7 @@ class TestPromotionUpdate:
         seed = self.scratch / "seed"
         record = seed / ".github/stable-candidate.json"
         candidate = json.loads(record.read_text())
-        candidate["version"] = "2025.4.0"
+        candidate["version"] = "25.4.0"
         record.write_text(json.dumps(candidate))
         self.git(seed, "add", ".github/stable-candidate.json")
         self.git(seed, "commit", "-m", "Invalid candidate")

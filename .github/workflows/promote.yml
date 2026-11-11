@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       candidate:
-        description: Successfully published RC tag (for example v2026.2.0rc1)
+        description: Successfully published RC tag (for example v26.2.0rc1)
         required: true
         type: string
 

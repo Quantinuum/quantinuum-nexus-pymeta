@@ -16,15 +16,18 @@ def test_dependency_targets_include_main_and_only_the_two_supported_series():
         maintenance.ROOT / ".github/templates/dependabot-main.yml"
     ).read_text()
     config = maintenance.dependabot_config(
-        ["release/2027.1", "release/2026.12"], stable, development
+        ["release/27.1", "release/26.12"], stable, development
     )
     assert "target-branch: main" in config
-    assert "target-branch: release/2027.1" in config
-    assert "target-branch: release/2026.12" in config
+    assert "target-branch: release/27.1" in config
+    assert "target-branch: release/26.12" in config
     assert "target-branch: next" not in config
     assert config.count("package-ecosystem: uv") == 3
     assert "prefix: feat" in development and "prefix: fix" in stable
     assert "version-update:semver-major" in stable
+    assert "tools-patches:" in stable and "update-types: [patch]" in stable
+    assert "tools-minor:" in stable and "update-types: [minor]" in stable
+    assert stable.index("tools-patches:") < stable.index("tools-minor:")
 
 
 @pytest.mark.parametrize(
@@ -94,14 +97,14 @@ def test_bootstrap_retries_after_branch_creation_preserve_package_metadata(tmp_p
         patch.object(maintenance, "ROOT", tmp_path),
         patch.object(maintenance, "open_files_pr") as open_pr,
     ):
-        maintenance.bootstrap(api, "release/2026.1", "v2026.1.3")
+        maintenance.bootstrap(api, "release/26.1", "v26.1.3")
     contents = open_pr.call_args.args[3]
     assert set(contents) == {"release-please-config.json"}
     assert (
         json.loads(contents["release-please-config.json"])["packages"]["."][
             "initial-version"
         ]
-        == "2026.1.0"
+        == "26.1.0"
     )
     assert open_pr.call_args.kwargs["expected_base"] == "baseline"
     api.git.create_ref.assert_not_called()
@@ -142,7 +145,7 @@ def test_minor_update_restrictions_follow_each_series_component_major_versions()
     api.repos.list_releases.side_effect = lambda page, per_page: (
         [
             {"tag_name": tag, "draft": False, "prerelease": False}
-            for tag in ("v2026.1.0", "v2026.2.0")
+            for tag in ("v26.1.0", "v26.2.0")
         ]
         if page == 1
         else []
@@ -150,13 +153,13 @@ def test_minor_update_restrictions_follow_each_series_component_major_versions()
 
     def read(api, path, ref):
         if path == "pyproject.toml":
-            version = "1.0.0" if ref == "release/2026.2" else "0.9.0"
+            version = "1.0.0" if ref == "release/26.2" else "0.9.0"
             return f'[project]\ndependencies = ["qnexus=={version}"]\n'
         return (maintenance.ROOT / path).read_text()
 
     with patch.object(maintenance, "read_file", side_effect=read):
         config = maintenance.expected_dependabot(api)
-    current, previous = config.split("target-branch: release/2026.1")
+    current, previous = config.split("target-branch: release/26.1")
     assert "dependency-name: qnexus" not in current
     assert "dependency-name: qnexus" in previous
 
@@ -168,12 +171,12 @@ def test_branch_setup_renames_distribution_without_copying_development_pins(
     monkeypatch.setenv("GITHUB_REPOSITORY", "Quantinuum/quantinuum-nexus-pymeta")
     api = Mock()
     api.git.get_ref.return_value = {"object": {"sha": "baseline"}}
-    project = '[project]\nname = "quantinuum-nexus-sdk"\nversion = "2026.1.3"\ndependencies = ["component==1.2.3"]\n'
-    lock = 'version = 1\n[[package]]\nname = "component"\nversion = "1.2.3"\n[[package]]\nname = "quantinuum-nexus-sdk"\nversion = "2026.1.3"\ndependencies = [{name = "component"}]\n'
+    project = '[project]\nname = "quantinuum-nexus-sdk"\nversion = "26.1.3"\ndependencies = ["component==1.2.3"]\n'
+    lock = 'version = 1\n[[package]]\nname = "component"\nversion = "1.2.3"\n[[package]]\nname = "quantinuum-nexus-sdk"\nversion = "26.1.3"\ndependencies = [{name = "component"}]\n'
     config = {
         "packages": {
             ".": {
-                "initial-version": "2026.1.0",
+                "initial-version": "26.1.0",
                 "extra-files": [
                     {
                         "type": "toml",
@@ -196,7 +199,7 @@ def test_branch_setup_renames_distribution_without_copying_development_pins(
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text)
     (tmp_path / "pyproject.toml").write_text(
-        '[project]\nname = "quantinuum-nexus"\nversion = "2026.2.0"\ndependencies = ["component==9.0.0"]\n'
+        '[project]\nname = "quantinuum-nexus"\nversion = "26.2.0"\ndependencies = ["component==9.0.0"]\n'
     )
     (tmp_path / "README.md").write_text(
         "[GitHub Releases](https://github.com/Quantinuum/quantinuum-nexus-pymeta/releases)\n"
@@ -215,7 +218,7 @@ def test_branch_setup_renames_distribution_without_copying_development_pins(
         ),
         patch.object(maintenance, "open_files_pr") as open_pr,
     ):
-        maintenance.bootstrap(api, "release/2026.1", "v2026.1.3")
+        maintenance.bootstrap(api, "release/26.1", "v26.1.3")
     result = open_pr.call_args.args[3]
     assert open_pr.call_args.args[4] == "fix: rename metapackage to quantinuum-nexus"
     expected_project = tomllib.loads(project)
@@ -236,7 +239,7 @@ def test_branch_setup_renames_distribution_without_copying_development_pins(
         target["extra-files"][0]["jsonpath"]
         == "$.package[?(@.name.value=='quantinuum-nexus')].version"
     )
-    assert target["initial-version"] == "2026.1.0"
+    assert target["initial-version"] == "26.1.0"
 
 
 def test_setup_rejects_a_concurrent_release_branch_update():
@@ -245,8 +248,8 @@ def test_setup_rejects_a_concurrent_release_branch_update():
     with pytest.raises(ValueError, match="changed"):
         maintenance.open_files_pr(
             api,
-            "release/2026.1",
-            "automation/bootstrap-2026.1",
+            "release/26.1",
+            "automation/bootstrap-26.1",
             {},
             "title",
             "body",
@@ -266,5 +269,5 @@ def test_aligned_release_branch_does_not_get_another_setup_pr(tmp_path):
         patch.object(maintenance, "read_file", return_value=project),
         patch.object(maintenance, "open_files_pr") as open_pr,
     ):
-        maintenance.bootstrap(api, "release/2026.1", "v2026.1.3")
+        maintenance.bootstrap(api, "release/26.1", "v26.1.3")
     open_pr.assert_not_called()
