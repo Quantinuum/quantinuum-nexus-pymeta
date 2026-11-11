@@ -70,6 +70,10 @@ and `GH_TOKEN` to a token with the required permissions, then use
 `python3 scripts/uv_pypi.py run --isolated --locked --only-group automation python scripts/<script>.py ...`.
 The automation dependencies are excluded from the published SDK's runtime dependencies.
 
+Commands that dispatch publication also require `WORKFLOW_DISPATCH_TOKEN`, a
+token with Actions write permission. GitHub Actions jobs supply their built-in
+`GITHUB_TOKEN` for this purpose.
+
 `scripts/uv_pypi.py` uses `uv.toml` explicitly, which excludes user- and
 system-level uv configuration. It also removes package-index environment
 overrides for the child process. Installation tests and CI use this same PyPI
@@ -108,8 +112,9 @@ running the script and package suites separately on each matrix cell.
    Configure the default squash message as **Pull request title and description**
    to preserve promotion footers.
 2. Set `HUGRBOT_PAT` to the release bot account's personal access token. It needs
-   Contents, Pull requests, and Issues read/write, plus Actions read/write for
-   validating candidates and dispatching publication. Branch bootstrap writes
+   Contents, Pull requests, and Issues read/write, plus Actions read permission
+   for validating candidates. Publication dispatch uses the job's built-in
+   `GITHUB_TOKEN` with Actions write permission. Branch bootstrap writes
    workflow files, so the token also needs permission to update workflows.
    The account must have repository access and any required organization/SSO
    authorization. The bot's login is resolved from the token. Renew it before
