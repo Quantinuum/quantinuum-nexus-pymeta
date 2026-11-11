@@ -23,8 +23,8 @@ def repository(tmp_path, monkeypatch):
         return release.command("git", *arguments)
 
     origin = tmp_path / "origin.git"
-    git("init", "--bare", "-b", "next", str(origin))
-    git("init", "-b", "next")
+    git("init", "--bare", "-b", "main", str(origin))
+    git("init", "-b", "main")
     for key, value in (
         ("user.name", "Test"),
         ("user.email", "test@example.invalid"),
@@ -47,7 +47,7 @@ def repository(tmp_path, monkeypatch):
     git("add", ".")
     git("commit", "-m", "chore: initialize")
     git("remote", "add", "origin", str(origin))
-    git("push", "origin", "HEAD:refs/heads/next")
+    git("push", "origin", "HEAD:refs/heads/main")
     git("switch", "--detach")
     publish = Mock()
     monkeypatch.setattr(release, "publish_preview", publish)
@@ -57,7 +57,7 @@ def repository(tmp_path, monkeypatch):
 def create_preview(repository):
     _, git, publish = repository
     source = git("rev-parse", "HEAD")
-    git("push", "origin", "HEAD:refs/heads/next")
+    git("push", "origin", "HEAD:refs/heads/main")
     release.preview()
     git("switch", "--detach", source)
     publish.reset_mock()
@@ -76,7 +76,7 @@ def test_maintenance_only_push_does_not_create_another_preview(repository, messa
     _, git, publish = repository
     create_preview(repository)
     git("commit", "--allow-empty", "-m", message)
-    git("push", "origin", "HEAD:refs/heads/next")
+    git("push", "origin", "HEAD:refs/heads/main")
     release.preview()
     assert git("tag", "--list") == "v2026.2.0b1"
     publish.assert_not_called()
@@ -94,7 +94,7 @@ def test_release_commit_followed_by_maintenance_still_creates_preview(
     git("commit", "--allow-empty", "-m", message)
     git("commit", "--allow-empty", "-m", "chore(deps-dev): update pytest")
     source = git("rev-parse", "HEAD")
-    git("push", "origin", "HEAD:refs/heads/next")
+    git("push", "origin", "HEAD:refs/heads/main")
     release.preview()
     publish.assert_called_once_with("v2026.2.0b2", source)
 
@@ -120,7 +120,7 @@ def test_target_or_channel_transition_creates_first_preview(
     git("add", ".github/preview.json")
     git("commit", "-m", "chore: configure previews")
     source = git("rev-parse", "HEAD")
-    git("push", "origin", "HEAD:refs/heads/next")
+    git("push", "origin", "HEAD:refs/heads/main")
     release.preview()
     publish.assert_called_once_with(tag, source)
 
@@ -137,7 +137,7 @@ def test_manual_request_releases_maintenance_changes(repository):
     create_preview(repository)
     git("commit", "--allow-empty", "-m", "chore: update tools")
     source = git("rev-parse", "HEAD")
-    git("push", "origin", "HEAD:refs/heads/next")
+    git("push", "origin", "HEAD:refs/heads/main")
     release.preview(force=True)
     publish.assert_called_once_with("v2026.2.0b2", source)
 
@@ -167,7 +167,7 @@ def test_preview_number_order_is_numeric(repository):
     git("tag", "v2026.2.0b10")
     git("switch", "--detach", source)
     git("commit", "--allow-empty", "-m", "chore: update tools")
-    git("push", "origin", "HEAD:refs/heads/next")
+    git("push", "origin", "HEAD:refs/heads/main")
     release.preview()
     publish.assert_not_called()
 
@@ -181,7 +181,7 @@ def test_rc_maintenance_changes_do_not_create_another_candidate(repository):
     git("commit", "-m", "chore: freeze")
     create_preview(repository)
     git("commit", "--allow-empty", "-m", "ci: update action")
-    git("push", "origin", "HEAD:refs/heads/next")
+    git("push", "origin", "HEAD:refs/heads/main")
     release.preview()
     assert git("tag", "--list") == "v2026.2.0rc1"
     publish.assert_not_called()

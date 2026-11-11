@@ -7,12 +7,12 @@ from ghapi.core import GhApi
 from ghapi.page import sync_paged
 
 
-def create_client() -> GhApi:
+def create_client(token: str | None = None) -> GhApi:
     owner, repo = os.environ["GITHUB_REPOSITORY"].split("/", 1)
     client = GhApi(
         owner=owner,
         repo=repo,
-        token=os.environ["GH_TOKEN"],
+        token=os.environ["GH_TOKEN"] if token is None else token,
         gh_host=os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/"),
         timeout=30,
         sync=True,

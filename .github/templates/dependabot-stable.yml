@@ -1,0 +1,26 @@
+  - package-ecosystem: uv
+    directory: /
+    target-branch: {branch}
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: fix
+      prefix-development: chore
+      include: scope
+    groups:
+      tools:
+        patterns:
+          - guppylang
+          - guppyft
+          - guppyalgos
+          - selene-sim
+          - pytket
+          - qnexus
+        update-types: [minor, patch]
+      development-and-automation:
+        patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+    # pre-1.0 ignores

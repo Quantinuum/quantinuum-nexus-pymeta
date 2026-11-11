@@ -10,9 +10,11 @@
         {
           "type": "toml",
           "path": "uv.lock",
-          "jsonpath": "$.package[?(@.name.value=='quantinuum-nexus-sdk')].version"
+          "jsonpath": "$.package[?(@.name.value=='quantinuum-nexus')].version"
         }
-      ]
+      ],
+      "draft": true,
+      "force-tag-creation": true
     }
   }
 }
