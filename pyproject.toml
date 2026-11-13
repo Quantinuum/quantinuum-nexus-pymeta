@@ -14,7 +14,7 @@ dependencies = [
     "guppyalgos==0.2.0",
     "selene-sim==0.3.7",
     "pytket==2.18.5",
-    "qnexus==0.51.3",
+    "qnexus==0.51.4",
 ]
 
 [dependency-groups]
