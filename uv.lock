@@ -1112,7 +1112,7 @@ wheels = [
 
 [[package]]
 name = "qnexus"
-version = "0.51.3"
+version = "0.51.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1129,9 +1129,9 @@ dependencies = [
     { name = "rich" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4c/cc/a237c77d112d445ec020719720423e022e42f150f4b98a04a14ac5cf37bb/qnexus-0.51.3.tar.gz", hash = "sha256:07d095d8a1d7f27d2d29fd87ab149fce3a93e3bbad991261cda6af44dafe35da", size = 426666, upload-time = "2026-11-05T11:05:45.052Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8e/18/e6a5f57fa2fcb185066f339e3ce870890cf81cf134b8aa62589b3309f401/qnexus-0.51.4.tar.gz", hash = "sha256:d380c4f1f2e82d50e9d8232dc111fd6f7226436d8aa7ff214e47ddac5889e372", size = 426656, upload-time = "2026-11-09T18:03:42.422Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d5/e9/87d4c791fe6a505abd7a8af27de162618e238c33b5a9deb994526adec62b/qnexus-0.51.3-py3-none-any.whl", hash = "sha256:3ce8f4756d125c167eb908d4c5f794078cb07f717ef9aa4b1d6fc687c5e58249", size = 84593, upload-time = "2026-11-05T11:05:43.781Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/20/cc3c9815cccd02377fff6d5927c609c2d2a3929a84a97bc25822051366f4/qnexus-0.51.4-py3-none-any.whl", hash = "sha256:97139e3a14d3d857696c969fc16757e154f0d909fb931af6fa40518088aedf45", size = 84589, upload-time = "2026-11-09T18:03:40.956Z" },
 ]
 
 [[package]]
@@ -1163,7 +1163,7 @@ requires-dist = [
     { name = "guppyft", specifier = "==0.6.1" },
     { name = "guppylang", specifier = "==1.2.0" },
     { name = "pytket", specifier = "==2.18.5" },
-    { name = "qnexus", specifier = "==0.51.3" },
+    { name = "qnexus", specifier = "==0.51.4" },
     { name = "selene-sim", specifier = "==0.3.7" },
 ]
 
@@ -1177,16 +1177,16 @@ dev = [
 
 [[package]]
 name = "quantinuum-schemas"
-version = "8.0.0"
+version = "8.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "orjson" },
     { name = "pydantic" },
     { name = "pydantic-extra-types" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/10/73/fedcac05dbb22d009803b26cef0bac9e3ef00724798c863efeebbbded41e/quantinuum_schemas-8.0.0.tar.gz", hash = "sha256:824a8768e4bed319a4d69cabefc160e9fff853c2219e26986c8854aaa43e15bd", size = 95227, upload-time = "2026-11-05T10:22:24.282Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/e5/bda4a4e056cc3035746b2322032910eb24c9808880e295cabfd1a86b864a/quantinuum_schemas-8.1.1.tar.gz", hash = "sha256:4d97a8fe52c3ad83380c2e42dbdbf453ceaff6092d0f8d58c2a9605019fba083", size = 95330, upload-time = "2026-11-09T17:11:09.459Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/c5/d7616f1823a71af5ab18e908b9cd35c9579254e44747f9358782034e8f54/quantinuum_schemas-8.0.0-py3-none-any.whl", hash = "sha256:fde6fc8f168087b59a45151fa415662f821de77d1519c71d22912429d3bd449c", size = 27216, upload-time = "2026-11-05T10:22:23.202Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/e8/1f719c02fd340b51d7b6fde7a1557c8595464375e45867222552fef7c114/quantinuum_schemas-8.1.1-py3-none-any.whl", hash = "sha256:09483667436f495ce3fcf1032cfb1cfc3a1c71e77b7920622ff5969624c513ee", size = 27248, upload-time = "2026-11-09T17:11:08.34Z" },
 ]
 
 [[package]]
