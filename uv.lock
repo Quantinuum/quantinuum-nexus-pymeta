@@ -1136,7 +1136,7 @@ wheels = [
 
 [[package]]
 name = "quantinuum-nexus"
-version = "26.1.1"
+version = "26.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "guppyalgos" },
