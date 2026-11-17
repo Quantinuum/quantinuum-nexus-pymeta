@@ -12,7 +12,7 @@ dependencies = [
     "guppylang==1.2.1",
     "guppyft==0.6.1",
     "guppyalgos==0.2.0",
-    "selene-sim==0.3.7",
+    "selene-sim==0.3.8",
     "pytket==2.18.5",
     "qnexus==0.51.4",
 ]
