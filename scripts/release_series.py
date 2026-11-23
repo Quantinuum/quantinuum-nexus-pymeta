@@ -207,8 +207,6 @@ def verify_promotion():
     match = VERSION.fullmatch(version)
     if not match or match[3]:
         return
-    if version == "26.1.0" and not (ROOT / ".github/stable-candidate.json").exists():
-        return
     candidate = json.loads((ROOT / ".github/stable-candidate.json").read_text())
     if candidate["version"] != version or not re.fullmatch(
         r"[0-9a-f]{40}", candidate["sha"]
@@ -227,6 +225,19 @@ def verify_promotion():
     )
 
 
+def previous_series_start(target: str, sha: str) -> str | None:
+    """Return the commit on main where the latest older stable series branched."""
+    series = tuple(map(int, target.split(".")[:2]))
+    stable = []
+    for tag in command("git", "tag", "--list", "v*").split():
+        match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
+        if match and (int(match[1]), int(match[2])) < series:
+            stable.append((tuple(map(int, match.groups())), tag))
+    if not stable:
+        return None
+    return command("git", "merge-base", sha, f"{max(stable)[1]}^{{commit}}")
+
+
 def write_promotion(target: str, tag: str, sha: str, project: str, lock: str):
     write_version(target, project, lock)
     (ROOT / ".github/stable-candidate.json").write_text(
@@ -235,6 +246,11 @@ def write_promotion(target: str, tag: str, sha: str, project: str, lock: str):
     config_path = ROOT / "release-please-config.json"
     config = json.loads(config_path.read_text())
     config["packages"]["."]["initial-version"] = target
+    # The new branch has no release in its history, so Release Please collects
+    # commits back to this point; start after the previous series branched.
+    start = previous_series_start(target, sha)
+    if start:
+        config["bootstrap-sha"] = start
     config_path.write_text(json.dumps(config, indent=2) + "\n")
     (ROOT / ".release-please-manifest.json").write_text("{}\n")
     command(

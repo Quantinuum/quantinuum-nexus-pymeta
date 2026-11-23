@@ -39,6 +39,12 @@
       "enabled": false
     },
     {
+      "description": "On stable series, offer patch updates separately so a newer minor version cannot hide them.",
+      "matchDepTypes": ["project.dependencies"],
+      "matchBaseBranches": ["/^release\\//"],
+      "separateMinorPatch": true
+    },
+    {
       "description": "Every runtime dependency is an exact pin of a Quantinuum package. On main, all updates, including breaking ones, form one group for the next series and merge automatically.",
       "matchDepTypes": ["project.dependencies"],
       "matchBaseBranches": ["main"],

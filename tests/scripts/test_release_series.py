@@ -141,6 +141,18 @@ class TestStamp:
 
 
 class TestPromotion:
+    def test_changelog_starts_where_the_latest_older_series_branched(self):
+        tags = "v26.1.0\nv26.1.10\nv26.1.9\nv26.2.0rc1\nv26.2.0\nv27.1.0rc1\n"
+        with patch.object(
+            release, "command", side_effect=[tags, "branch-point"]
+        ) as command:
+            assert release.previous_series_start("27.1.0", "candidate") == (
+                "branch-point"
+            )
+        command.assert_called_with("git", "merge-base", "candidate", "v26.2.0^{commit}")
+        with patch.object(release, "command", return_value="v26.1.0rc1\n"):
+            assert release.previous_series_start("26.1.0", "candidate") is None
+
     def test_only_a_successfully_published_rc_can_be_promoted(self):
         published = {"draft": False, "prerelease": True}
         success = [{"head_sha": "candidate", "conclusion": "success"}]

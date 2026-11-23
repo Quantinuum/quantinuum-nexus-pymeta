@@ -129,23 +129,32 @@ dependency freeze, the Quantinuum pin check, and the full installation matrix.
    The account must have repository access and any required organization/SSO
    authorization. The bot's login is resolved from the token. Renew it before
    expiry. The PAT allows bot-created PRs and releases to trigger CI.
-4. Protect `main` and all `release/*` branches with a ruleset under repository
-   Settings → Rules → Rulesets targeting the default branch and `release/*`.
-   New numbered branches inherit the rule automatically. Require PRs, the
-   **Installation checks** status, and resolution of review conversations;
-   block force pushes and deletion. Enable **Require merge queue** with the
-   squash merge method, so every PR is tested against the latest base branch
-   and the PRs queued ahead of it before merging; the queue replaces requiring
-   up-to-date branches.
+4. Protect `main` and all `release/*` branches with two rulesets under
+   repository Settings → Rules → Rulesets, because GitHub does not support
+   merge queues on wildcard branch patterns. Both require PRs with squash
+   merges only, the **Installation checks** status, and resolution of review
+   conversations, and block force pushes and deletion.
+   - The **main** ruleset targets the default branch. Enable **Require merge
+     queue** with the squash merge method, so every PR is tested against the
+     latest base branch and the PRs queued ahead of it before merging; the
+     queue replaces requiring up-to-date branches. Keep **Only merge
+     non-failing pull requests** enabled, so a PR whose own queue check fails,
+     such as a Renovate PR held by the RC freeze, cannot merge as part of a
+     later passing group.
+   - The **release branches** ruleset targets `release/*`, so new numbered
+     branches inherit it automatically. Require branches to be up to date
+     before merging, and skip the status check requirement on branch creation
+     so promotion can create a release branch from its RC.
+
    Require no approving reviews so the release bot can merge eligible Renovate
    and release PRs after CI. Additional human/code-owner review requirements prevent
    unattended merges until those reviews arrive. The bot does not bypass required
    checks. Limit release-branch creation to maintainers and the release bot if
    repository rules allow it.
 
-   GitHub plan and repository visibility determine protection and merge queue
-   availability. Without them, automatic merges still wait for CI, but nothing
-   stops other writers from pushing or merging directly.
+   GitHub auto-merge waits only for required status checks. Without these
+   rulesets, automatic merges by Renovate and the release bot can happen before
+   CI finishes, so enable them before relying on the automation.
 5. Leave `PYPI_PUBLISH_ENABLED` unset or `false` for GitHub-only publication.
    For a new series, use the beta/RC and promotion process in
    [Maintaining and releasing](MAINTAINING.md).

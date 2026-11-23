@@ -63,18 +63,26 @@ starts a workflow run that creates or rebases that update.
 
 ### Merge queue
 
-Both `main` and `release/*` merge through a GitHub merge queue that requires
-**Installation checks**. When Renovate marks a PR for automerge, it enables
-GitHub's auto-merge; the PR enters the queue once its checks pass, and the
-queue runs CI again against the combination of the latest base branch and every
-PR ahead of it. A PR therefore merges only if it installs correctly as it will
-land, and simultaneous updates cannot break each other. Maintainers merge
-reviewed PRs the same way, with **Merge when ready**.
+`main` merges through a GitHub merge queue that requires **Installation
+checks**. When Renovate marks a PR for automerge, it enables GitHub's
+auto-merge; the PR enters the queue once its checks pass, and the queue runs CI
+again against the combination of the latest base branch and every PR ahead of
+it. A PR therefore merges only if it installs correctly as it will land, and
+simultaneous updates cannot break each other. Maintainers merge reviewed PRs
+the same way, with **Merge when ready**.
+
+GitHub does not support merge queues on wildcard branch patterns, so
+`release/*` branches instead require PRs to be up to date with their branch
+before merging. Renovate and Release Please keep their PRs rebased, and
+auto-merge merges them once **Installation checks** passes on the updated
+branch.
 
 During the RC freeze (`channel` is `rc` in `.github/preview.json`), the
 **Dependency freeze** CI check fails for Renovate PRs into `main`. They stay
-open, and Renovate rebases them; they merge once `main` returns to a beta
-channel. Other PRs, and release branches, are unaffected.
+open until `main` returns to a beta channel. Renovate rebases automerging
+updates when `main` changes; for the others, check their boxes (or the box to
+rebase all open PRs) in the Dependency Dashboard so CI runs again. Other PRs,
+and release branches, are unaffected.
 
 Installation tests do not establish behavioral compatibility; maintainers must
 assess that separately.
@@ -83,7 +91,7 @@ assess that separately.
 
 Release Please runs on numbered release branches. It opens a PR updating the
 version, changelog, manifest, and lockfile. The **Release Please** workflow then
-enqueues that PR with auto-merge, guarded by its head commit, when all of the
+enables auto-merge for that PR, guarded by its head commit, when all of the
 following hold:
 
 - the branch is a supported series and the PR contains only release files;
@@ -101,7 +109,9 @@ need a release and `chore:` for routine tooling changes.
 `26.1.0` is released through the normal RC flow. `main` starts with the
 original 26.1 pins and `.github/preview.json` set to the `26.1.0` RC channel.
 Release Please's manifest is empty and its `bootstrap-sha` marks the start of
-release history.
+release history. Each later promotion moves `bootstrap-sha` to the commit where
+the previous stable series branched from `main`, so a new series' changelog
+lists only the changes made since then.
 
 1. Merging to `main` creates `v26.1.0rc1`.
 2. Promote it as described in [Promoting a stable series](#promoting-a-stable-series).

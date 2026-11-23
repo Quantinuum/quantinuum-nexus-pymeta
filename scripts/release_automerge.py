@@ -1,7 +1,7 @@
 """Queue eligible Release Please patch PRs for automatic merging.
 
-GitHub auto-merge adds the PR to the merge queue once required checks pass, so
-the release is tested against the current branch before it merges. Ineligible
+GitHub auto-merge merges the PR once required checks pass on a branch that is up
+to date with its release branch, so the release is tested as it will land. Ineligible
 PRs have auto-merge disabled in case an earlier revision enabled it.
 """
 
@@ -125,7 +125,7 @@ def queue_release(api: GhApi, number: int, release_bot: str, repository: str):
     command = ["gh", "pr", "merge", str(number), "--repo", repository]
     if release_pr_eligible(api, pr, release_bot):
         print(f"Enabling auto-merge for release PR #{number}.")
-        command += ["--auto", "--match-head-commit", pr["head"]["sha"]]
+        command += ["--auto", "--squash", "--match-head-commit", pr["head"]["sha"]]
     elif pr.get("auto_merge"):
         print(f"Release PR #{number} requires manual review; disabling auto-merge.")
         command.append("--disable-auto")

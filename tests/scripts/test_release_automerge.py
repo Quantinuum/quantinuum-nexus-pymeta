@@ -118,6 +118,7 @@ def test_queues_a_patch_release_with_a_head_commit_guard(monkeypatch):
             "--repo",
             "owner/repo",
             "--auto",
+            "--squash",
             "--match-head-commit",
             "head",
         ]
