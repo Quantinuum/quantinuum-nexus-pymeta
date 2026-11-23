@@ -41,6 +41,7 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag: ${{ steps.release.outputs.tag_name }}
+      pr_number: ${{ steps.release.outputs.pr && fromJSON(steps.release.outputs.pr).number || '' }}
     needs: policy
     if: needs.policy.outputs.allowed == 'true'
     runs-on: ubuntu-latest
@@ -60,6 +61,27 @@ jobs:
           target-branch: ${{ github.ref_name }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  automerge:
+    needs: release
+    if: needs.release.outputs.pr_number != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: '0.13.5'
+      - name: Queue an eligible patch release PR
+        env:
+          GH_TOKEN: ${{ secrets.HUGRBOT_PAT }}
+          PR_NUMBER: ${{ needs.release.outputs.pr_number }}
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_automerge.py
 
   validate:
     needs: release

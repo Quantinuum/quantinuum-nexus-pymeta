@@ -42,6 +42,9 @@ jobs:
 
   test:
     needs: verify
+    permissions:
+      contents: read
+      pull-requests: read
     uses: ./.github/workflows/ci.yml
     with:
       ref: ${{ needs.verify.outputs.sha }}
@@ -84,13 +87,14 @@ jobs:
           python scripts/uv_pypi.py lock --check
           export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
           python scripts/uv_pypi.py build
+          python scripts/uv_pypi.py export --locked --format pylock.toml --no-header --no-default-groups --no-emit-project -o dist/pylock.toml
       - name: Check out current publication tooling
         uses: actions/checkout@v7
         with:
           ref: main
           path: release-automation
           persist-credentials: false
-      - name: Attach distributions to the GitHub release
+      - name: Attach distributions and pylock.toml to the GitHub release
         working-directory: release-automation
         env:
           GH_TOKEN: ${{ github.token }}

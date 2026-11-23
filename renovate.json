@@ -1,0 +1,82 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "baseBranchPatterns": ["main"],
+  "enabledManagers": ["pep621", "github-actions"],
+  "constraints": {
+    "uv": "0.13.5"
+  },
+  "semanticCommits": "enabled",
+  "semanticCommitScope": "deps",
+  "platformAutomerge": true,
+  "automergeType": "pr",
+  "packageRules": [
+    {
+      "description": "Development tools and build requirements are reviewed manually and never trigger a release.",
+      "matchDepTypes": ["dependency-groups", "build-system.requires"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "development tools",
+      "semanticCommitType": "chore"
+    },
+    {
+      "matchDepTypes": ["dependency-groups", "build-system.requires"],
+      "matchUpdateTypes": ["major"],
+      "semanticCommitType": "chore"
+    },
+    {
+      "description": "The supported Python range is changed deliberately, not by dependency updates.",
+      "matchDepTypes": ["requires-python"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "semanticCommitType": "ci"
+    },
+    {
+      "description": "Workflow actions are maintained on main and backported with other tooling.",
+      "matchManagers": ["github-actions"],
+      "matchBaseBranches": ["/^release\\//"],
+      "enabled": false
+    },
+    {
+      "description": "Every runtime dependency is an exact pin of a Quantinuum package. On main, all updates, including breaking ones, form one group for the next series and merge automatically.",
+      "matchDepTypes": ["project.dependencies"],
+      "matchBaseBranches": ["main"],
+      "groupName": "Quantinuum packages",
+      "separateMajorMinor": false,
+      "semanticCommitType": "feat",
+      "automerge": true
+    },
+    {
+      "description": "Stable series receive compatible updates as SDK patch releases. Patch updates merge automatically.",
+      "matchDepTypes": ["project.dependencies"],
+      "matchBaseBranches": ["/^release\\//"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "Quantinuum patch updates",
+      "semanticCommitType": "fix",
+      "automerge": true
+    },
+    {
+      "description": "Minor updates of 1.0 or later packages require review on stable series.",
+      "matchDepTypes": ["project.dependencies"],
+      "matchBaseBranches": ["/^release\\//"],
+      "matchUpdateTypes": ["minor"],
+      "groupName": "Quantinuum minor updates",
+      "semanticCommitType": "fix"
+    },
+    {
+      "description": "Breaking updates are reserved for the next series: all major updates, and minor updates of packages below 1.0.",
+      "matchDepTypes": ["project.dependencies"],
+      "matchBaseBranches": ["/^release\\//"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "matchDepTypes": ["project.dependencies"],
+      "matchBaseBranches": ["/^release\\//"],
+      "matchUpdateTypes": ["minor"],
+      "matchCurrentVersion": "<1.0.0",
+      "enabled": false
+    }
+  ]
+}

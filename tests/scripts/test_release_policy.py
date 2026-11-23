@@ -1,9 +1,14 @@
 """Check support-window rollover, manual patches, and series identity."""
 
+import json
+import runpy
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 
+import github_api
+import renovate_branches
 from release_policy import published_series, release_allowed, supported_branches
 
 
@@ -77,3 +82,25 @@ def test_release_listing_is_paginated():
         2: [metadata("v26.1.0")],
     }.get(page, [])
     assert supported_branches(api) == ["release/26.1"]
+
+
+def test_renovate_targets_main_and_published_series_but_not_a_promoted_rc(
+    tmp_path, monkeypatch
+):
+    api = client(
+        [
+            metadata("v26.1.0"),
+            metadata("v26.2.3"),
+            metadata("v26.3.0rc1", prerelease=True),
+            metadata("v26.3.0", draft=True),
+        ]
+    )
+    monkeypatch.setattr(github_api, "create_client", lambda: api)
+    output = tmp_path / "output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    runpy.run_path(str(Path(renovate_branches.__file__)), run_name="__main__")
+    name, value = output.read_text().strip().split("=", 1)
+    assert name == "force"
+    assert json.loads(value) == {
+        "baseBranchPatterns": ["main", "release/26.2", "release/26.1"]
+    }

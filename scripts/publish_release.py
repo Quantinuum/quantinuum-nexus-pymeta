@@ -1,4 +1,4 @@
-"""Attach built distributions to a GitHub release without replacing existing assets."""
+"""Attach built distributions and pylock.toml to a GitHub release without replacing existing assets."""
 
 import hashlib
 import os
@@ -16,13 +16,14 @@ def publish_assets(api: GhApi, tag: str, sha: str, directory: Path):
     release = get_release(api, tag)
     wheels = list(directory.glob("*.whl"))
     sources = list(directory.glob("*.tar.gz"))
-    if len(wheels) != 1 or len(sources) != 1:
-        raise ValueError("Expected one wheel and one source distribution")
+    lock = directory / "pylock.toml"
+    if len(wheels) != 1 or len(sources) != 1 or not lock.is_file():
+        raise ValueError("Expected one wheel, one source distribution, and pylock.toml")
     assets = {
         asset["name"]: asset
         for asset in all_items(api.repos.list_release_assets, release_id=release["id"])
     }
-    files = [(path, path.read_bytes()) for path in wheels + sources]
+    files = [(path, path.read_bytes()) for path in wheels + sources + [lock]]
     for path, data in files:
         existing = assets.get(path.name)
         if existing is not None and (
@@ -62,8 +63,6 @@ def publish_assets(api: GhApi, tag: str, sha: str, directory: Path):
             draft=False,
             make_latest="true" if latest else "false",
         )
-    if not release.get("prerelease", False):
-        api.actions.create_workflow_dispatch(workflow_id="maintenance.yml", ref="main")
 
 
 if __name__ == "__main__":

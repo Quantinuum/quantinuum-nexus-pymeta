@@ -57,7 +57,7 @@ Hooks must be installed once per clone. The pre-commit executable lives in the
 persistent project `.venv`; run `just setup` again after recreating it. The test
 repositories disable Git hooks to avoid recursive test runs during commits.
 
-The approval, merge, and release workflows use `ghapi` with the bot account
+The release and promotion workflows use `ghapi` with the bot account
 PAT or built-in job tokens. Its exact version is pinned in the `automation` dependency group,
 which is also included in `dev`. Git operations use the Git executable.
 Tests mock GitHub responses and never submit real reviews or merges.
@@ -91,61 +91,64 @@ installer's indexes. For the published uv installation command in the [README](R
 
 The installation tests build a wheel and source distribution, install each
 into a separate fresh environment, run `uv pip check`, and verify the installed
-metapackage metadata and all six dependency versions. They resolve dependencies
-as a consumer would, independently of the development lockfile.
+metapackage metadata and every pinned dependency version. They resolve dependencies
+as a consumer would, independently of the development lockfile. A third
+environment installs the exported `pylock.toml` followed by the wheel without
+dependencies, checking that the release lock file is complete and consistent.
 
-GitHub CI runs on pull requests, explicit workflow dispatches, and tagged-release
-validation. Script tests and the lockfile check run once on Ubuntu/Python 3.12,
+GitHub CI runs on pull requests, the merge queue, explicit workflow dispatches,
+and tagged-release validation. Script tests and the lockfile check run once on Ubuntu/Python 3.12,
 matching the automation workflows. Both installation formats are tested on every
 stable CPython minor version in the declared Python range using `ubuntu-latest`,
 `windows-latest`, `macos-latest` (Apple Silicon), and `macos-26-intel` (the latest
 standard Intel macOS image), excluding the unsupported Intel macOS/Python 3.14
 combination. The explicit Intel label needs updating when GitHub
 introduces a newer image. CI uses the same pytest runner as the just recipes.
-The required **Installation checks** status covers both the script tests and
-the full installation matrix.
+The required **Installation checks** status covers the script tests, the RC
+dependency freeze, the Quantinuum pin check, and the full installation matrix.
 
 ## One-time repository setup
 
 1. Use `main` as the default development branch. Set `.github/preview.json` to
-   the upcoming series and enable Actions, Dependabot, and squash merges.
-   Configure the default squash message as **Pull request title and description**
-   to preserve promotion footers.
-2. Set `HUGRBOT_PAT` to the release bot account's personal access token. It needs
+   the upcoming series and enable Actions. Under Settings → General → Pull
+   Requests, allow squash merges with the default message **Pull request title
+   and description** to preserve promotion footers, enable **Allow auto-merge**,
+   and enable **Automatically delete head branches**.
+2. Renovate runs in this repository's **Renovate** workflow
+   (`.github/workflows/renovate.yml`), so no app installation is needed. It runs
+   every four hours, on manual dispatch, when `renovate.json` changes on `main`,
+   and when a maintainer checks a box in the Dependency Dashboard issue. It
+   reads `renovate.json` from `main` and authenticates as the release bot with
+   `HUGRBOT_PAT`, so its PRs trigger CI normally.
+3. Set `HUGRBOT_PAT` to the release bot account's personal access token. It needs
    Contents, Pull requests, and Issues read/write, plus Actions read permission
-   for validating candidates. Publication dispatch uses the job's built-in
-   `GITHUB_TOKEN` with Actions write permission. Branch bootstrap writes
-   workflow files, so the token also needs permission to update workflows.
+   for validating candidates. For Renovate, it also needs Commit statuses and
+   Workflows read/write; Workflows lets Renovate update action versions in
+   `.github/workflows`. Publication dispatch uses the job's built-in
+   `GITHUB_TOKEN` with Actions write permission.
    The account must have repository access and any required organization/SSO
    authorization. The bot's login is resolved from the token. Renew it before
    expiry. The PAT allows bot-created PRs and releases to trigger CI.
-3. Protect `main` and all `release/*` branches. Require PRs, the **Installation
-   checks** status, up-to-date branches, and resolution of review conversations;
-   block force pushes and deletion. Configure a ruleset under repository
+4. Protect `main` and all `release/*` branches with a ruleset under repository
    Settings → Rules → Rulesets targeting the default branch and `release/*`.
-   New numbered branches inherit the rule automatically.
-   Require no approving reviews so the bot can merge its own patch
-   release PRs after CI. Additional human/code-owner review requirements prevent
-   unattended merges until those reviews arrive. Main's development dependency
-   PRs receive the bot's approval; other changes need maintainer review.
-   The bot does not bypass required checks. Limit release-branch creation to
-   maintainers and the release bot if repository rules allow it.
+   New numbered branches inherit the rule automatically. Require PRs, the
+   **Installation checks** status, and resolution of review conversations;
+   block force pushes and deletion. Enable **Require merge queue** with the
+   squash merge method, so every PR is tested against the latest base branch
+   and the PRs queued ahead of it before merging; the queue replaces requiring
+   up-to-date branches.
+   Require no approving reviews so the release bot can merge eligible Renovate
+   and release PRs after CI. Additional human/code-owner review requirements prevent
+   unattended merges until those reviews arrive. The bot does not bypass required
+   checks. Limit release-branch creation to maintainers and the release bot if
+   repository rules allow it.
 
-   GitHub plan and repository visibility determine protection availability.
-   If protection is unavailable, the automation still checks eligibility and CI,
-   but cannot stop other writers from pushing or merging directly.
-4. Leave `PYPI_PUBLISH_ENABLED` unset or `false` for GitHub-only publication.
-5. Dispatch **Maintain release series** from `main` to initialize branches for
-   existing published series. Review and merge its tooling installation PRs.
+   GitHub plan and repository visibility determine protection and merge queue
+   availability. Without them, automatic merges still wait for CI, but nothing
+   stops other writers from pushing or merging directly.
+5. Leave `PYPI_PUBLISH_ENABLED` unset or `false` for GitHub-only publication.
    For a new series, use the beta/RC and promotion process in
-   [Maintaining and releasing](MAINTAINING.md). The support window contains one
-   series until a second stable series has been published.
-
-The maintenance workflow creates missing supported branches from their published
-release tags and aligns their distribution name with `main`, preserving package
-versions, component pins, other lockfile data, and release manifests.
-Review the generated branch setup PR before enabling patch
-updates. Published tags and release assets are left intact.
+   [Maintaining and releasing](MAINTAINING.md).
 
 The workflows honor repository protections. CI runs after the repository is
 pushed; release automation additionally requires the `HUGRBOT_PAT` repository secret.
