@@ -1,5 +1,12 @@
 # Changelog
 
+## [26.1.3](https://github.com/Quantinuum/quantinuum-nexus-pymeta/compare/v26.1.2...v26.1.3) (2026-11-23)
+
+
+### Bug Fixes
+
+* **deps:** bump guppyft from 0.6.1 to 0.6.3 in the tools-patches group ([#22](https://github.com/Quantinuum/quantinuum-nexus-pymeta/issues/22)) ([4d337ea](https://github.com/Quantinuum/quantinuum-nexus-pymeta/commit/4d337eaa83dbf4acbf698a006aff810522c7b894))
+
 ## [26.1.2](https://github.com/Quantinuum/quantinuum-nexus-pymeta/compare/v26.1.1...v26.1.2) (2026-11-17)
 
 
