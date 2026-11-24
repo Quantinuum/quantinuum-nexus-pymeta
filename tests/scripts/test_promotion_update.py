@@ -110,6 +110,8 @@ class TestPromotionUpdate:
         self.existing_pr = True
         self.create_failure = False
         self.create_attempts = 0
+        self.stale_head_reads = 0
+        self.stale_head = None
 
     def remote_head(self):
         return self.git(
@@ -206,11 +208,17 @@ class TestPromotionUpdate:
         api.pulls.update.side_effect = edit
         api.pulls.list_reviews.side_effect = reviews
         api.pulls.dismiss_review.side_effect = dismiss
-        api.pulls.get.side_effect = lambda **parameters: {
-            "head": {"sha": self.remote_head()},
-            "state": "open",
-            "draft": self.pr["draft"],
-        }
+
+        def get_pr(**parameters):
+            stale = self.stale_head_reads > 0
+            self.stale_head_reads -= stale
+            return {
+                "head": {"sha": self.stale_head if stale else self.remote_head()},
+                "state": "open",
+                "draft": self.pr["draft"],
+            }
+
+        api.pulls.get.side_effect = get_pr
         with (
             patch.object(release, "ROOT", clone),
             patch.object(release, "create_client", return_value=api),
@@ -449,6 +457,26 @@ class TestPromotionUpdate:
         assert self.remote_head() == updated
         assert self.reviews[0]["state"] == "DISMISSED"
         assert self.pr["draft"]
+
+    def test_waits_for_github_to_report_the_pushed_promotion_head(self):
+        self.stale_head = self.original_head
+        self.stale_head_reads = 2
+        with patch("github_api.time.sleep") as sleep:
+            self.promote(2)
+        assert sleep.call_count == 2
+        assert self.events == ["draft", "edit", "dismiss", "ready"]
+        assert not self.pr["draft"]
+
+    def test_a_different_promotion_head_keeps_the_pr_draft(self):
+        self.stale_head = "concurrent"
+        self.stale_head_reads = 6
+        with (
+            patch("github_api.time.sleep"),
+            pytest.raises(ValueError, match="changed during its update"),
+        ):
+            self.promote(2)
+        assert self.pr["draft"]
+        assert "ready" not in self.events
 
     def test_an_intentionally_draft_pr_stays_draft(self):
         self.pr["draft"] = True

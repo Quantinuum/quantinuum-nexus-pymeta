@@ -2,12 +2,13 @@
 
 import os
 
-from github_api import create_client
+from github_api import create_client, wait_for
 from verify_release import verify_release
 
 
 def dispatch_release(api, tag: str):
-    sha = verify_release(tag, api, "automation", "")
+    # The draft release is usually created moments before this dispatch.
+    sha = wait_for(lambda: verify_release(tag, api, "automation", ""), missing=(404,))
     dispatcher = create_client(token=os.environ["WORKFLOW_DISPATCH_TOKEN"])
     dispatcher.actions.create_workflow_dispatch(
         workflow_id="publish.yml", ref=tag, inputs={"tag": tag}

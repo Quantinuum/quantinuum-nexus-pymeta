@@ -44,6 +44,56 @@ def test_dispatch_uses_workflow_token_and_verifies_with_repository_client(
     dispatcher.repos.get_release_by_tag.assert_not_called()
 
 
+def test_dispatch_waits_for_a_just_created_draft_release(monkeypatch):
+    monkeypatch.setenv("WORKFLOW_DISPATCH_TOKEN", "workflow-token")
+    tag = "v26.1.0rc2"
+    repository = Mock()
+    repository.repos.get_release_by_tag.side_effect = APIError(
+        "Not Found", status_code=404
+    )
+    # The release list lags behind release creation for the first two lookups.
+    visible_after = iter([False, False, True])
+    lookups = []
+
+    def list_releases(page, per_page):
+        if page == 1:
+            lookups.append(page)
+            if next(visible_after):
+                return [{"tag_name": tag, "draft": True, "prerelease": True}]
+        return []
+
+    repository.repos.list_releases.side_effect = list_releases
+    repository.repos.get_commit.return_value = {"sha": "verified-sha"}
+    dispatcher = Mock()
+    with (
+        patch.object(dispatch_release, "create_client", return_value=dispatcher),
+        patch("github_api.time.sleep") as sleep,
+    ):
+        dispatch_release.dispatch_release(repository, tag)
+    assert len(lookups) == 3
+    assert sleep.call_count == 2
+    dispatcher.actions.create_workflow_dispatch.assert_called_once_with(
+        workflow_id="publish.yml", ref=tag, inputs={"tag": tag}
+    )
+
+
+def test_missing_release_stops_dispatch_after_retries(monkeypatch):
+    monkeypatch.setenv("WORKFLOW_DISPATCH_TOKEN", "workflow-token")
+    repository = Mock()
+    repository.repos.get_release_by_tag.side_effect = APIError(
+        "Not Found", status_code=404
+    )
+    repository.repos.list_releases.side_effect = lambda page, per_page: []
+    with (
+        patch.object(dispatch_release, "create_client") as create,
+        patch("github_api.time.sleep") as sleep,
+        pytest.raises(APIError),
+    ):
+        dispatch_release.dispatch_release(repository, "v26.1.1")
+    assert sleep.call_count == 5
+    create.assert_not_called()
+
+
 def test_invalid_release_never_dispatches(monkeypatch):
     monkeypatch.setenv("WORKFLOW_DISPATCH_TOKEN", "workflow-token")
     repository = Mock()
