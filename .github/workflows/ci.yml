@@ -64,7 +64,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: Require exact pins for Quantinuum packages in uv.lock
+      - name: Require exact, documented pins for Quantinuum packages in uv.lock
         run: python scripts/quantinuum_pins.py
 
   install:

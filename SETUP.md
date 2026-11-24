@@ -49,6 +49,8 @@ just hooks ruff-format --all-files
 ```
 
 Commits that change dependency or packaging configuration also check the lockfile.
+Commits that change `pyproject.toml`, `uv.lock`, or `README.md` also run the
+**Quantinuum pins** check (`just check-pins`), which needs network access to PyPI.
 Run script tests explicitly with `just test-scripts 3.12` during development;
 `just test-scripts` runs the suite on every supported Python minor. Distribution
 installation tests run in CI and through `just test-package` or `just test-all`.
