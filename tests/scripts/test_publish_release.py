@@ -1,7 +1,6 @@
 """Check GitHub asset publication and retries without making network requests."""
 
 import hashlib
-import json
 import re
 import runpy
 from pathlib import Path
@@ -19,6 +18,7 @@ def publication(tmp_path):
     files = {
         "quantinuum_nexus-26.1.0-py3-none-any.whl": b"wheel",
         "quantinuum_nexus-26.1.0.tar.gz": b"source",
+        "pylock.toml": b"lock",
     }
     for name, data in files.items():
         (tmp_path / name).write_bytes(data)
@@ -37,10 +37,10 @@ def publication(tmp_path):
     return api, tmp_path, files
 
 
-def test_uploads_both_distributions_as_binary_data(publication):
+def test_uploads_distributions_and_lock_as_binary_data(publication):
     api, directory, files = publication
     publish_release.publish_assets(api, "v26.1.0", "verified", directory)
-    assert api.call_count == 2
+    assert api.call_count == 3
     for call in api.call_args_list:
         assert call.args == ("https://uploads.github.com/releases/7/assets", "POST")
         assert call.kwargs["headers"] == {"Content-Type": "application/octet-stream"}
@@ -54,10 +54,6 @@ def test_real_client_uploads_authenticated_binary_requests(publication):
 
     def respond(request):
         assert request.headers["Authorization"] == "token test-token"
-        if request.url.path.endswith("/actions/workflows/maintenance.yml/dispatches"):
-            assert request.method == "POST"
-            assert json.loads(request.content) == {"ref": "main"}
-            return httpx2.Response(204)
         if request.method == "POST":
             assert request.url.host == "uploads.github.com"
             assert request.headers["Content-Type"] == "application/octet-stream"
@@ -90,7 +86,7 @@ def test_real_client_uploads_authenticated_binary_requests(publication):
     assert set(uploaded) == set(files)
 
 
-@pytest.mark.parametrize("existing_count", [1, 2])
+@pytest.mark.parametrize("existing_count", [1, 2, 3])
 def test_retry_reuses_matching_assets_and_only_uploads_missing_files(
     publication, existing_count
 ):
@@ -107,7 +103,7 @@ def test_retry_reuses_matching_assets_and_only_uploads_missing_files(
         assets if kwargs["page"] == 1 else []
     )
     publish_release.publish_assets(api, "v26.1.0", "verified", directory)
-    assert api.call_count == 2 - existing_count
+    assert api.call_count == 3 - existing_count
 
 
 @pytest.mark.parametrize(
@@ -129,13 +125,17 @@ def test_existing_conflict_fails_before_any_upload(publication, state, digest):
     api.assert_not_called()
 
 
-@pytest.mark.parametrize("problem", ["moved", "missing-wheel", "extra-wheel"])
+@pytest.mark.parametrize(
+    "problem", ["moved", "missing-wheel", "extra-wheel", "missing-lock"]
+)
 def test_rejects_unverified_tags_drafts_and_incomplete_builds(publication, problem):
     api, directory, files = publication
     if problem == "moved":
         api.repos.get_commit.return_value = {"sha": "different"}
     elif problem == "missing-wheel":
         (directory / next(iter(files))).unlink()
+    elif problem == "missing-lock":
+        (directory / "pylock.toml").unlink()
     else:
         (directory / "extra.whl").write_bytes(b"extra")
     with pytest.raises(ValueError):
@@ -167,7 +167,7 @@ def test_cli_uses_the_verified_release_commit(
 ):
     api, directory, _ = publication
     (directory / "dist").mkdir()
-    for path in directory.glob("quantinuum*"):
+    for path in directory.glob("*.*"):
         path.rename(directory / "dist" / path.name)
     if external_directory:
         tooling = directory / "tooling"
@@ -181,7 +181,7 @@ def test_cli_uses_the_verified_release_commit(
     monkeypatch.setenv("RELEASE_SHA", "verified")
     monkeypatch.setattr("github_api.create_client", lambda: api)
     runpy.run_path(str(Path(publish_release.__file__)), run_name="__main__")
-    assert api.call_count == 2
+    assert api.call_count == 3
 
 
 @pytest.mark.parametrize(

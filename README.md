@@ -63,7 +63,8 @@ python -m pip install ./quantinuum_nexus-*.whl
 
 These shell examples expand the wheel filename; you can also pass its exact
 path. Dependencies are resolved from PyPI as usual. A GitHub release is ready
-to install once its wheel and source distribution appear under release assets.
+to install once its wheel, source distribution, and `pylock.toml` appear under
+release assets.
 
 ### Installing from PyPI
 
@@ -102,9 +103,26 @@ circuit = Circuit(2).H(0).CX(0, 1)
 
 ### Dependency versions and reproducibility
 
-Every SDK release uses exact pins for all dependencies. Updating the SDK version
-is required to get new component versions, because a component's independent
-release does not change an already published SDK release.
+Each SDK release pins every Quantinuum package it installs to an exact version:
+the six tools above and the supporting Quantinuum packages they depend on, such
+as `hugr`, `tket`, and `selene-core`. Updating the SDK version is required to get
+new component versions, because a component's independent release does not
+change an already published SDK release.
+
+Third-party dependencies, such as `numpy`, use compatible ranges so the SDK can
+share an environment with your other packages. To reproduce the exact
+environment a release was tested with, each GitHub release also attaches a
+[`pylock.toml`](https://packaging.python.org/en/latest/specifications/pylock-toml/)
+lock file. Install it with uv into a fresh virtual environment, then add the SDK
+wheel without resolving dependencies again:
+
+```sh
+uv pip install -r pylock.toml
+uv pip install --no-deps ./quantinuum_nexus-*.whl
+```
+
+The lock file covers the supported Python versions and platforms. It cannot be
+combined with other requirements in a single install command.
 
 ## Release cycle
 
@@ -124,18 +142,18 @@ later year.
 New release series may introduce breaking component changes. Review the release
 notes and validate your application before moving to a new series.
 
-Patch releases within a series are intended to preserve compatibility. The
-stable dependency update process checks daily for eligible component updates:
-minor and patch updates for components at version 1.0 or later, and patch updates
-only for components below 1.0. Major component updates and pre-1.0 minor updates
-are reserved for the upcoming series. A daily update check does not imply a new
-SDK release every day.
+Patch releases within a series are intended to preserve compatibility. Automated
+dependency updates propose eligible Quantinuum package updates for stable
+series: minor and patch updates for packages at version 1.0 or later, and patch
+updates only for packages below 1.0. Major updates and pre-1.0 minor updates are
+reserved for the upcoming series. Not every dependency update produces a new SDK
+release immediately.
 
-For the two most recent stable series, component patch updates and their SDK
-patch releases merge automatically after CI. Post-1.0 component minor updates
-require human review of both the dependency PR and the resulting SDK patch
-release PR. Older series can receive manually initiated patches. Stable
-patches can continue while the next series is in preview.
+For the two most recent stable series, patch updates and their SDK patch
+releases merge automatically after CI. Minor updates require human review of
+both the dependency PR and the resulting SDK patch release PR. Older series can
+receive manually initiated patches. Stable patches can continue while the next
+series is in preview.
 
 ### Betas and release candidates
 

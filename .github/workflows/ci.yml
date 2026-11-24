@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+  merge_group:
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -28,6 +29,43 @@ jobs:
           python-version: '3.12'
       - id: matrix
         run: echo "versions=$(python scripts/python_matrix.py)" >> "$GITHUB_OUTPUT"
+
+  dependency-freeze:
+    name: Dependency freeze
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: '0.13.5'
+      - name: Hold Renovate updates to main during the RC freeze
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/dependency_freeze.py
+
+  quantinuum-pins:
+    name: Quantinuum pins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Require exact pins for Quantinuum packages in uv.lock
+        run: python scripts/quantinuum_pins.py
 
   install:
     needs: python-versions
@@ -64,7 +102,7 @@ jobs:
   required:
     name: Installation checks
     if: always()
-    needs: [python-versions, install]
+    needs: [python-versions, dependency-freeze, quantinuum-pins, install]
     runs-on: ubuntu-latest
     steps:
       - name: Require the whole matrix to pass

@@ -1,4 +1,4 @@
-"""Build and install both distributions in isolated environments."""
+"""Build both distributions and pylock.toml, and install each in isolated environments."""
 
 import argparse
 import importlib.metadata
@@ -40,18 +40,38 @@ def run(*command: str) -> None:
 
 def check_distributions() -> None:
     run("uv", "build", "--clear")
-    artifacts = sorted((ROOT / "dist").glob("*.whl")) + sorted(
-        (ROOT / "dist").glob("*.tar.gz")
+    dist = ROOT / "dist"
+    wheels, sources = sorted(dist.glob("*.whl")), sorted(dist.glob("*.tar.gz"))
+    assert len(wheels) == 1 and len(sources) == 1, (wheels, sources)
+    lock = dist / "pylock.toml"
+    # Keep in sync with the release asset export in publish.yml.
+    run(
+        "uv",
+        "export",
+        "--locked",
+        "--format",
+        "pylock.toml",
+        "--no-header",
+        "--no-default-groups",
+        "--no-emit-project",
+        "-o",
+        str(lock),
     )
-    assert len(artifacts) == 2, artifacts
-    for artifact in artifacts:
+    installations = [
+        [[str(wheels[0])]],
+        [[str(sources[0])]],
+        # pylock.toml cannot be combined with other requirements in one command.
+        [["-r", str(lock)], ["--no-deps", str(wheels[0])]],
+    ]
+    for steps in installations:
         with tempfile.TemporaryDirectory(prefix="nexus-install-") as temporary:
             environment = Path(temporary) / "venv"
             python = environment / (
                 "Scripts/python.exe" if sys.platform == "win32" else "bin/python"
             )
             run("uv", "venv", "--python", sys.executable, str(environment))
-            run("uv", "pip", "install", "--python", str(python), str(artifact))
+            for arguments in steps:
+                run("uv", "pip", "install", "--python", str(python), *arguments)
             run("uv", "pip", "check", "--python", str(python))
             run(str(python), str(Path(__file__).resolve()), "--check")
 

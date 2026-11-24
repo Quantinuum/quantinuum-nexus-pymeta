@@ -15,58 +15,110 @@ The two highest numbered published stable series receive automatic dependency
 updates and patch releases. Draft releases and previews do not count. Publishing
 a patch does not move the support window; publishing a new stable series retires
 the oldest supported series. Older branches remain available for manual patches.
-The release and merge workflows query published releases directly, so stale
-Dependabot PRs cannot keep an unsupported series in automatic maintenance.
 
-**Maintain release series** runs daily, on stable publication, and when its
-configuration or release tooling changes on `main`. It opens a PR updating `.github/dependabot.yml`
-from the templates in `.github/templates/`. The merge workflow merges this PR
-after CI only when its contents exactly match the current support window.
-Dispatch the maintenance workflow on `main` to reconcile immediately. It also
-creates missing supported branches from their highest published patch tag and
-opens a tooling installation PR. Review and merge that PR before using the branch
-for maintenance. Retrying the workflow resumes a partial branch setup.
-The setup PR aligns the distribution name with `main`, including the metapackage
-entry in the lockfile and the Release Please version target, while preserving
-the branch's version and component pins.
+### What is pinned
 
-Dependabot checks the six SDK tools daily. On supported stable branches, it
-groups component patch updates separately from post-1.0 minor updates. Component
-patch updates can merge automatically; minor updates require human review.
-Pre-1.0 minor updates and all major updates are excluded from stable branches.
-On `main`, it can propose major upgrades and pre-1.0 minor upgrades too. All runtime versions remain exact pins.
-The development-and-automation group proposes minor and patch updates separately;
-these require manual review and do not trigger releases on their own.
-GitHub Actions updates target `main`.
+`pyproject.toml` pins every Quantinuum-maintained package in the resolved
+environment with `==`: the six SDK components, and the supporting Quantinuum
+packages they depend on, such as `hugr`, `tket`, and `selene-core`. A release
+therefore identifies one exact version of all Quantinuum code. Third-party
+dependencies stay as ranges so the SDK installs alongside other software; the
+lockfile, and the `pylock.toml` attached to each release, record their exact
+tested versions.
 
-Eligible dependency PRs merge after successful installation CI, with author,
-file, version, and commit checks. Stable updates use `fix(deps):`; development
-updates use `feat(deps):`. On `main`, automatic merging requires an active beta
-cycle and CI against the current base commit. It stops during the RC freeze.
+The **Quantinuum pins** CI check (`scripts/quantinuum_pins.py`) enforces this.
+It looks up each runtime package in `uv.lock` on PyPI and fails when a
+package linking to github.com/Quantinuum or github.com/CQCL, or maintained
+from a quantinuum.com address, is not pinned. To add a component, pin it and
+any new Quantinuum packages it pulls in, then run `uv lock`. When a Renovate
+update introduces a new Quantinuum dependency, push the missing pin to the
+Renovate branch.
+
+### Dependency updates with Renovate
+
+[Renovate](https://docs.renovatebot.com/) proposes dependency updates, as
+configured in [`renovate.json`](renovate.json). It is self-hosted: the
+**Renovate** workflow runs it every four hours as the release bot. Dispatch
+the workflow to run it immediately. Renovate reads its configuration only
+from `main`. Each run updates `main` and the two supported release branches,
+which the workflow selects from published stable releases and passes to
+Renovate as a forced `baseBranchPatterns`, overriding the main-only default in
+`renovate.json`. A new series joins
+once its `.0` is published, and the oldest series drops out at the same time.
+Renovate updates `uv.lock` with the same uv version CI uses.
+
+| Branch | Runtime pins (Quantinuum packages) | Merge |
+| --- | --- | --- |
+| `main` | All updates, including major and pre-1.0 minor, in one `feat(deps):` group | Automatic |
+| `release/*` | Patch updates, in one `fix(deps):` group | Automatic |
+| `release/*` | Minor updates of packages at 1.0 or later, in one `fix(deps):` group | Review |
+| `release/*` | Major updates, and minor updates below 1.0 | Not proposed |
+
+Development tools and build requirements are grouped as `chore(deps):` on every
+branch and require review; they never trigger a release. GitHub Actions updates
+target `main` only, as `ci(deps):`, and also require review. The supported
+Python range is never changed by Renovate. The Dependency Dashboard issue that
+Renovate opens lists pending and rate-limited updates; checking a box there
+starts a workflow run that creates or rebases that update.
+
+### Merge queue
+
+`main` merges through a GitHub merge queue that requires **Installation
+checks**. When Renovate marks a PR for automerge, it enables GitHub's
+auto-merge; the PR enters the queue once its checks pass, and the queue runs CI
+again against the combination of the latest base branch and every PR ahead of
+it. A PR therefore merges only if it installs correctly as it will land, and
+simultaneous updates cannot break each other. Maintainers merge reviewed PRs
+the same way, with **Merge when ready**.
+
+GitHub does not support merge queues on wildcard branch patterns, so
+`release/*` branches instead require PRs to be up to date with their branch
+before merging. Renovate and Release Please keep their PRs rebased, and
+auto-merge merges them once **Installation checks** passes on the updated
+branch.
+
+During the RC freeze (`channel` is `rc` in `.github/preview.json`), the
+**Dependency freeze** CI check fails for Renovate PRs into `main`. They stay
+open until `main` returns to a beta channel. Renovate rebases automerging
+updates when `main` changes; for the others, check their boxes (or the box to
+rebase all open PRs) in the Dependency Dashboard so CI runs again. Other PRs,
+and release branches, are unaffected.
+
 Installation tests do not establish behavioral compatibility; maintainers must
 assess that separately.
 
+### Patch releases
+
 Release Please runs on numbered release branches. It opens a PR updating the
-version, changelog, manifest, and lockfile. Patch release PRs on supported series
-merge automatically after CI only when runtime dependencies are unchanged or
-contain exclusively component patch upgrades since the previous release. A
-component minor upgrade requires human review of the SDK release PR even after
-the dependency PR has been reviewed and merged. The first `.0` release of a
-series requires manual review. Ordinary release commits increment only the patch
-number; the branch and package version must identify the same series. Use `fix:` for package corrections
-that need a release and `chore:` for routine tooling changes.
+version, changelog, manifest, and lockfile. The **Release Please** workflow then
+enables auto-merge for that PR, guarded by its head commit, when all of the
+following hold:
+
+- the branch is a supported series and the PR contains only release files;
+- the version is a patch increment within the branch's series, not a `.0`;
+- every runtime pin is unchanged or a patch upgrade since the previous release,
+  and no pin was added or removed.
+
+Otherwise it leaves the PR for review, disabling auto-merge if it was enabled
+for an earlier state. So a minor upgrade requires human review of both the
+dependency PR and the SDK release PR. Use `fix:` for package corrections that
+need a release and `chore:` for routine tooling changes.
 
 ## Initial stable release
 
-The initial package version is `26.1.0`. Its Release Please manifest is empty,
-and `bootstrap-sha` marks the start of release history. Create `release/26.1`
-from the reviewed initial state with a commit containing `Release-As: 26.1.0`
-in its footer. Dispatch **Release Please** on that branch, then review and merge
-its first release PR. This initial release can publish without an RC candidate
-record; subsequent new series require a validated RC.
+`26.1.0` is released through the normal RC flow. `main` starts with the
+original 26.1 pins and `.github/preview.json` set to the `26.1.0` RC channel.
+Release Please's manifest is empty and its `bootstrap-sha` marks the start of
+release history. Each later promotion moves `bootstrap-sha` to the commit where
+the previous stable series branched from `main`, so a new series' changelog
+lists only the changes made since then.
 
-`main` targets the `26.2.0` beta cycle. Once `v26.1.0` is published,
-**Maintain release series** adds its stable Dependabot target.
+1. Merging to `main` creates `v26.1.0rc1`.
+2. Promote it as described in [Promoting a stable series](#promoting-a-stable-series).
+   This creates `release/26.1`.
+3. Once `v26.1.0` is published, merge a PR on `main` setting the preview target
+   to `26.2.0` with the `beta` channel. Renovate then resumes updates to `main`
+   and starts updating `release/26.1`.
 
 ## Beta and release candidates
 
@@ -114,9 +166,12 @@ must be validated before promotion.
    branch when PR creation fails; concurrent pushes are not overwritten.
 4. Review and merge the Release Please PR for `.0`. Avoid dependency changes
    between promotion and publication: the publisher requires the selected RC's
-   exact metadata and lockfile for the first stable release.
+   exact metadata and lockfile for the first stable release. Renovate does not
+   update the new branch until the `.0` is published; from then on, it receives
+   dependency updates and automatic patch releases.
 5. On `main`, update the preview target to the following series and reset its
-   channel to `beta`. Previews stop for a target once its stable tag exists.
+   channel to `beta`. Previews stop for a target once its stable tag exists, and
+   Renovate updates to `main` resume merging.
 
 Stable patches continue independently on supported release branches throughout
 this cycle. Backport relevant stable fixes to `main` through reviewed PRs.
@@ -127,7 +182,7 @@ Open a fix PR against the older `release/YY.SERIES` branch and pass its required
 CI and reviews. Dispatch **Release Please** with that branch selected to prepare
 a patch release PR. Review and merge it manually, then dispatch **Release Please**
 on that branch again to create the release. The explicit dispatch permits older
-series without reactivating Dependabot or automatic merging for them.
+series without reactivating Renovate or automatic merging for them.
 If necessary, backport current release tooling before starting this process.
 
 ## Publication and retries
@@ -135,7 +190,8 @@ If necessary, backport current release tooling before starting this process.
 Release Please and preview creation produce draft GitHub releases with existing
 tags and explicitly dispatch **Validate and publish** on the tag. The publisher
 verifies the tag, tests the full installation matrix, builds a wheel and source
-distribution, and verifies uploaded assets before publishing the release.
+distribution, exports `pylock.toml` from the release commit's `uv.lock`, and
+verifies uploaded assets before publishing the release.
 Older-series patches and previews do not become GitHub's latest stable release.
 Publication jobs share a repository-wide queue so their latest-version checks
 and release publication cannot overlap across tags. Installation checks for
@@ -160,9 +216,8 @@ See [optional PyPI setup](SETUP.md#enabling-optional-pypi-publication).
 Develop tooling and workflow changes on `main`, then cherry-pick relevant focused
 commits into supported release branches through PRs. Preserve branch-specific
 versions, manifests, candidate records, dependency pins, and lockfiles. Backport
-tooling to older branches when preparing a manual patch. Dependabot templates
-live on `main`; edit the templates and run **Maintain release series** rather
-than editing generated targets independently.
+tooling to older branches when preparing a manual patch. Renovate configuration
+lives only on `main`; copies on release branches are ignored.
 
 Run `just test` for lockfile and repository script checks. For dependency or
 packaging changes, run `just test-all` for fresh wheel and source installation
