@@ -46,7 +46,7 @@ jobs:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: '0.13.5'
+          version: '0.13.9'
       - name: Hold Renovate updates to main during the RC freeze
         if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         env:
@@ -89,7 +89,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: '0.13.5'
+          version: '0.13.9'
       - name: Verify lockfile
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
         run: python scripts/uv_pypi.py lock --check

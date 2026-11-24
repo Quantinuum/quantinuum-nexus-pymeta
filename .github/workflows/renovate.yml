@@ -44,7 +44,7 @@ jobs:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: '0.13.5'
+          version: '0.13.9'
       # A new series is added once its .0 is published, so dependency updates
       # cannot change a promoted RC before its first stable release.
       - name: Select main and the supported release series
