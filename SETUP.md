@@ -109,7 +109,9 @@ because Python 3.14 is not supported there. The explicit Intel label needs
 updating when GitHub introduces a newer image. CI uses the same pytest runner as
 the just recipes; `just test-package` covers every supported version locally.
 The required **Installation checks** status covers the script tests, the RC
-dependency freeze, the Quantinuum pin check, and the installation matrix.
+dependency freeze, the Quantinuum pin check, and the installation matrix. A new
+push to a pull request cancels CI still running for its previous commit;
+merge-queue, dispatched, and release-validation runs are never cancelled.
 
 ## One-time repository setup
 
