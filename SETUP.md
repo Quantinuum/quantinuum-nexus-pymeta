@@ -114,14 +114,20 @@ dependency freeze, the Quantinuum pin check, and the full installation matrix.
 1. Use `main` as the default development branch. Set `.github/preview.json` to
    the upcoming series and enable Actions. Under Settings → General → Pull
    Requests, allow squash merges with the default message **Pull request title
-   and description** to preserve promotion footers, enable **Allow auto-merge**,
-   and enable **Automatically delete head branches**.
+   and description** to preserve promotion footers, disable **Allow merge
+   commits** and **Allow rebase merging**, enable **Allow auto-merge**, and
+   enable **Automatically delete head branches**. Renovate chooses its
+   auto-merge method from these settings, so leaving other methods enabled lets
+   it request one that the release branch ruleset rejects.
 2. Renovate runs in this repository's **Renovate** workflow
    (`.github/workflows/renovate.yml`), so no app installation is needed. It runs
    every four hours, on manual dispatch, when `renovate.json` changes on `main`,
    and when a maintainer checks a box in the Dependency Dashboard issue. It
    reads `renovate.json` from `main` and authenticates as the release bot with
-   `HUGRBOT_PAT`, so its PRs trigger CI normally.
+   `HUGRBOT_PAT`, so its PRs trigger CI normally. Its commits are created
+   through the GitHub API, so they are signed and verified; the workflow sets
+   the git author to the bot account. Update `RENOVATE_GIT_AUTHOR` in the
+   workflow if the token's account changes.
 3. Set `HUGRBOT_PAT` to the release bot account's personal access token. It needs
    Contents, Pull requests, and Issues read/write, plus Actions read permission
    for validating candidates. For Renovate, it also needs Commit statuses and

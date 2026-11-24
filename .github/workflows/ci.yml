@@ -52,6 +52,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/dependency_freeze.py
+      - name: Check the preview selection
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py check-preview
 
   quantinuum-pins:
     name: Quantinuum pins

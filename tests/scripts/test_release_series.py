@@ -1,5 +1,6 @@
 """Validate release series version sequencing, RC promotion, and dependency preservation."""
 
+import subprocess
 import tomllib
 from unittest.mock import patch
 
@@ -26,6 +27,20 @@ class TestPreview:
         for channel in ("beta", "rc"):
             with pytest.raises(ValueError, match="already been released"):
                 release.next_preview("26.2.0", channel, ["v26.2.0"])
+
+    def test_preview_selection_is_checked_before_merging(self):
+        tags = ["v26.1.0rc1", "v26.1.0", "v26.2.0b1", "v26.2.0rc1"]
+        release.check_preview({"target": "26.1.0", "channel": "rc"}, tags)
+        release.check_preview({"target": "26.3.0", "channel": "beta"}, tags)
+        for config in [
+            {"target": "26.2.0", "channel": "beta"},
+            {"target": "26.2.0", "channel": "RC"},
+            {"target": "26.2", "channel": "rc"},
+            {"target": "26.2.0"},
+            {"target": "26.2.0", "channel": "rc", "extra": True},
+        ]:
+            with pytest.raises(ValueError):
+                release.check_preview(config, tags)
 
     def test_invalid_targets_and_channels_are_rejected(self):
         for target, channel in [
@@ -144,11 +159,17 @@ class TestPromotion:
     def test_changelog_starts_where_the_latest_older_series_branched(self):
         tags = "v26.1.0\nv26.1.10\nv26.1.9\nv26.2.0rc1\nv26.2.0\nv27.1.0rc1\n"
         with patch.object(
-            release, "command", side_effect=[tags, "branch-point"]
+            release, "command", side_effect=[tags, '{"sha": "rc"}', "branch-point"]
         ) as command:
             assert release.previous_series_start("27.1.0", "candidate") == (
                 "branch-point"
             )
+        command.assert_called_with("git", "merge-base", "candidate", "rc")
+        unpromoted = subprocess.CalledProcessError(128, "git show")
+        with patch.object(
+            release, "command", side_effect=[tags, unpromoted, "branch-point"]
+        ) as command:
+            release.previous_series_start("27.1.0", "candidate")
         command.assert_called_with("git", "merge-base", "candidate", "v26.2.0^{commit}")
         with patch.object(release, "command", return_value="v26.1.0rc1\n"):
             assert release.previous_series_start("26.1.0", "candidate") is None

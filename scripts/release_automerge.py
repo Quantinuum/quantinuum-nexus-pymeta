@@ -1,8 +1,8 @@
 """Queue eligible Release Please patch PRs for automatic merging.
 
 GitHub auto-merge merges the PR once required checks pass on a branch that is up
-to date with its release branch, so the release is tested as it will land. Ineligible
-PRs have auto-merge disabled in case an earlier revision enabled it.
+to date with its release branch, so the release is tested as it will land. Each run
+first disables auto-merge that an earlier revision enabled, then re-evaluates.
 """
 
 import json
@@ -123,16 +123,21 @@ def release_pr_eligible(api: GhApi, pr: dict, release_bot: str) -> bool:
 def queue_release(api: GhApi, number: int, release_bot: str, repository: str):
     pr = api.pulls.get(pull_number=number)
     command = ["gh", "pr", "merge", str(number), "--repo", repository]
-    if release_pr_eligible(api, pr, release_bot):
-        print(f"Enabling auto-merge for release PR #{number}.")
-        command += ["--auto", "--squash", "--match-head-commit", pr["head"]["sha"]]
-    elif pr.get("auto_merge"):
-        print(f"Release PR #{number} requires manual review; disabling auto-merge.")
-        command.append("--disable-auto")
-    else:
+    # Auto-merge survives pushes, so clear it before evaluating this revision;
+    # if evaluation fails, a newer revision is not merged unreviewed.
+    if pr.get("auto_merge"):
+        subprocess.run(command + ["--disable-auto"], check=True)
+    if not release_pr_eligible(api, pr, release_bot):
         print(f"Release PR #{number} requires manual review.")
         return
-    subprocess.run(command, check=True)
+    merge = ["--squash", "--match-head-commit", pr["head"]["sha"]]
+    # GitHub cannot enable auto-merge on a PR that is already mergeable.
+    if pr.get("mergeable_state") == "clean":
+        print(f"Merging release PR #{number}; its checks have passed.")
+        subprocess.run(command + merge, check=True)
+    else:
+        print(f"Enabling auto-merge for release PR #{number}.")
+        subprocess.run(command + ["--auto"] + merge, check=True)
 
 
 if __name__ == "__main__":

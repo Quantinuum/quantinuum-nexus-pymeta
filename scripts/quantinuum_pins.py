@@ -14,12 +14,17 @@ import time
 import tomllib
 import urllib.request
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ORGANISATIONS = re.compile(r"github\.com/(quantinuum|cqcl)(/|$)", re.IGNORECASE)
 EMAIL = re.compile(r"@quantinuum\.com\b", re.IGNORECASE)
 README_SECTION = "## Included tools"
+# A package is a list item, or the second cell of a table row.
+README_PACKAGE = re.compile(
+    r"^(?:[-*] |\|[^|\n]*\| )`([A-Za-z0-9_.-]+)`(?: \||$)", re.MULTILINE
+)
 
 
 def normalise(name: str) -> str:
@@ -96,15 +101,20 @@ def unpinned(
     project: dict, lock: dict, info: Callable[[str, str], dict]
 ) -> list[tuple[str, str]]:
     pins = pinned(project["dependencies"])
-    return [
+    candidates = [
         (name, version)
         for name, version in sorted(runtime_packages(lock, project["name"]))
-        if normalise(name) not in pins and is_quantinuum(info(name, version))
+        if normalise(name) not in pins
+    ]
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        metadata = list(pool.map(lambda package: info(*package), candidates))
+    return [
+        package for package, data in zip(candidates, metadata) if is_quantinuum(data)
     ]
 
 
 def readme_packages(readme: str) -> set[str]:
-    """Return the package names in backticks within the README's tools section."""
+    """Return the package names listed in the README's tools section."""
     lines = readme.splitlines()
     start = lines.index(README_SECTION) + 1
     end = next(
@@ -112,7 +122,7 @@ def readme_packages(readme: str) -> set[str]:
         len(lines),
     )
     section = "\n".join(lines[start:end])
-    return {normalise(name) for name in re.findall(r"`([A-Za-z0-9_.-]+)`", section)}
+    return {normalise(name) for name in README_PACKAGE.findall(section)}
 
 
 def readme_mismatches(project: dict, readme: str) -> tuple[list[str], list[str]]:

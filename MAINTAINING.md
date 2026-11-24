@@ -57,8 +57,11 @@ Renovate updates `uv.lock` with the same uv version CI uses.
 
 Development tools and build requirements are grouped as `chore(deps):` on every
 branch and require review; they never trigger a release. GitHub Actions updates
-target `main` only, as `ci(deps):`, and also require review. The supported
-Python range is never changed by Renovate. The Dependency Dashboard issue that
+target `main` only, as `ci(deps):`, and also require review. A uv update
+changes the workflows, the uv constraint in `renovate.json`, and the version in
+`SETUP.md` together, so CI and Renovate always use the same uv. The workflows'
+Python version follows `.python-version` and is not updated by Renovate, nor is
+the supported Python range. The Dependency Dashboard issue that
 Renovate opens lists pending and rate-limited updates; checking a box there
 starts a workflow run that creates or rebases that update.
 
@@ -83,7 +86,8 @@ During the RC freeze (`channel` is `rc` in `.github/preview.json`), the
 open until `main` returns to a beta channel. Renovate rebases automerging
 updates when `main` changes; for the others, check their boxes (or the box to
 rebase all open PRs) in the Dependency Dashboard so CI runs again. Other PRs,
-and release branches, are unaffected.
+and release branches, are unaffected. CI also rejects a PR that makes
+`.github/preview.json` invalid or returns a series to beta after its first RC.
 
 Installation tests do not establish behavioral compatibility; maintainers must
 assess that separately.
@@ -101,7 +105,9 @@ following hold:
   and no pin was added or removed.
 
 Otherwise it leaves the PR for review, disabling auto-merge if it was enabled
-for an earlier state. So a minor upgrade requires human review of both the
+for an earlier state. Each run disables existing auto-merge before
+re-evaluating, so a failed run never leaves a newer revision queued. If the PR's
+checks have already passed, it merges the PR directly. So a minor upgrade requires human review of both the
 dependency PR and the SDK release PR. Use `fix:` for package corrections that
 need a release and `chore:` for routine tooling changes.
 
@@ -162,7 +168,9 @@ must be validated before promotion.
    configuration and manifest.
 3. Review and merge the promotion PR, preserving its `Release-As` footer. Configure
    squash merges to use the PR title and description. A newer RC updates the
-   existing promotion PR, dismisses stale approvals, and requires fresh CI.
+   existing promotion PR with a merge of that RC, so all of its changes reach
+   the release branch, not only its pins. It also dismisses stale approvals and
+   requires fresh CI.
    Older RCs and moved candidate tags are rejected. Retries recover a pushed
    branch when PR creation fails; concurrent pushes are not overwritten.
 4. Review and merge the Release Please PR for `.0`. Avoid dependency changes

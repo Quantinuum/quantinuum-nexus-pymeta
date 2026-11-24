@@ -97,6 +97,7 @@ def test_readme_must_list_exactly_the_pinned_packages():
             "Installs `quantinuum-nexus`.",
             "## Included tools",
             "| Guppy | `guppylang` | Write programs. |",
+            "Packages use `uv` and need `numpy`.",
             "### Supporting packages",
             "- `hugr`",
             "## Installation",
