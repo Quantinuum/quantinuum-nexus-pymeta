@@ -22,6 +22,24 @@ The SDK includes these six packages:
 | TKET | `pytket` | Build, transform, and optimize quantum circuits. |
 | Nexus client | `qnexus` | Access the Quantinuum Nexus platform from Python. |
 
+### Supporting packages
+
+The tools above depend on further Quantinuum packages. The SDK installs these
+automatically and pins them as well, so each release identifies one exact
+version of all Quantinuum code. You rarely need to use them directly:
+
+- `guppylang-internals`
+- `hugr`
+- `quantinuum-schemas`
+- `qwasm`
+- `selene-core`
+- `selene-formats`
+- `selene-hugr-qis-compiler`
+- `tket`
+- `tket-eccs`
+- `tket-exts`
+- `zixy`
+
 See the [Quantinuum documentation](https://docs.quantinuum.com/) for tutorials
 and API references, and the
 [platform release notes](https://docs.quantinuum.com/platform/releases/) for
@@ -35,40 +53,17 @@ Macs, use Python 3.12 or 3.13. This restriction also applies to an Intel Python
 interpreter running through Rosetta on an Apple Silicon Mac; use a native ARM64
 interpreter for Python 3.14.
 
+To limit CI usage, each change is installation-tested on every platform with
+the oldest and newest supported Python versions (3.12 and 3.14, or 3.12 and 3.13
+on Intel macOS). Python 3.13 on the other platforms is supported, but tested
+through the full local installation tests rather than on every change.
+
 Python 3.15 and later are outside this release's supported range. The pinned
 `guppyalgos` version requires Python below 3.15.
 
 ## Installation
 
-Releases are initially distributed through
-[GitHub Releases](https://github.com/Quantinuum/quantinuum-nexus-pymeta/releases).
-Download the wheel (`.whl`) attached to the release you want. In a directory
-containing that single SDK wheel, add it to your uv project using:
-
-```sh
-uv add ./quantinuum_nexus-*.whl
-```
-
-Or install it into an existing activated virtual environment using:
-
-```sh
-uv pip install ./quantinuum_nexus-*.whl
-```
-
-Alternatively, use pip:
-
-```sh
-python -m pip install ./quantinuum_nexus-*.whl
-```
-
-These shell examples expand the wheel filename; you can also pass its exact
-path. Dependencies are resolved from PyPI as usual. A GitHub release is ready
-to install once its wheel, source distribution, and `pylock.toml` appear under
-release assets.
-
-### Installing from PyPI
-
-For releases also published to PyPI, add the SDK to your uv project using:
+Add the SDK from PyPI to your uv project using:
 
 ```sh
 uv add quantinuum-nexus
@@ -101,11 +96,39 @@ from pytket import Circuit
 circuit = Circuit(2).H(0).CX(0, 1)
 ```
 
+### Installing from GitHub Releases
+
+Each release is also available from
+[GitHub Releases](https://github.com/Quantinuum/quantinuum-nexus-pymeta/releases).
+Download the wheel (`.whl`) attached to the release you want. In a directory
+containing that single SDK wheel, add it to your uv project using:
+
+```sh
+uv add ./quantinuum_nexus-*.whl
+```
+
+Or install it into an existing activated virtual environment using:
+
+```sh
+uv pip install ./quantinuum_nexus-*.whl
+```
+
+Alternatively, use pip:
+
+```sh
+python -m pip install ./quantinuum_nexus-*.whl
+```
+
+These shell examples expand the wheel filename; you can also pass its exact
+path. Dependencies are resolved from PyPI as usual. A GitHub release is ready
+to install once its wheel, source distribution, and `pylock.toml` appear under
+release assets.
+
 ### Dependency versions and reproducibility
 
 Each SDK release pins every Quantinuum package it installs to an exact version:
-the six tools above and the supporting Quantinuum packages they depend on, such
-as `hugr`, `tket`, and `selene-core`. Updating the SDK version is required to get
+the six tools and the supporting packages listed
+[above](#supporting-packages). Updating the SDK version is required to get
 new component versions, because a component's independent release does not
 change an already published SDK release.
 
@@ -157,7 +180,7 @@ series is in preview.
 
 ### Betas and release candidates
 
-Upcoming release series are offered as opt-in GitHub prereleases:
+Upcoming release series are offered as opt-in prereleases:
 
 - **Beta** (`YY.SERIES.0bN`): a preview whose component versions can still
   change, including potentially breaking updates. Further previews increment
@@ -168,9 +191,8 @@ Upcoming release series are offered as opt-in GitHub prereleases:
 - **Stable** (`YY.SERIES.0`): the first stable release in a series, using the
   chosen release candidate's exact direct dependency pins.
 
-To try a preview from GitHub, download and install its wheel as described
-above. For previews also published to PyPI, allow preview versions when adding
-or upgrading the SDK in your uv project:
+To try a preview, allow preview versions when adding or upgrading the SDK in
+your uv project:
 
 ```sh
 uv add --upgrade --prerelease allow quantinuum-nexus

@@ -62,4 +62,6 @@ jobs:
           RENOVATE_FORCE: ${{ steps.branches.outputs.force }}
           RENOVATE_ONBOARDING: 'false'
           RENOVATE_REQUIRE_CONFIG: required
+          # The owner of HUGRBOT_PAT, instead of Renovate's default Mend account.
+          RENOVATE_GIT_AUTHOR: 'hugrbot <170723698+hugrbot@users.noreply.github.com>'
           LOG_LEVEL: info

@@ -37,6 +37,10 @@ test-all: test test-package
 check-lock:
     {{uv}} lock --check
 
+# Require exact pins, listed in the README, for every Quantinuum package (queries PyPI).
+check-pins:
+    {{uv}} run --no-project --isolated --python 3.12 python scripts/quantinuum_pins.py
+
 # Install the Git pre-commit hook using the persistent project environment.
 hooks-install:
     {{tasks}} hooks-install

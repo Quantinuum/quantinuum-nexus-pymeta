@@ -23,3 +23,9 @@ repos:
         language: system
         pass_filenames: false
         files: '^(pyproject\.toml|uv\.lock|uv\.toml|scripts/uv_pypi\.py|justfile|\.pre-commit-config\.yaml)$'
+      - id: quantinuum-pins
+        name: Verify Quantinuum pins
+        entry: just check-pins
+        language: system
+        pass_filenames: false
+        files: '^(pyproject\.toml|uv\.lock|README\.md|scripts/quantinuum_pins\.py)$'

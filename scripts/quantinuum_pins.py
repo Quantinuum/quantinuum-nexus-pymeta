@@ -3,6 +3,8 @@
 A package counts as Quantinuum-managed when its PyPI metadata for the locked
 version links to github.com/Quantinuum or github.com/CQCL, or an author or
 maintainer uses a quantinuum.com address.
+
+The README's "Included tools" section must also name exactly the pinned packages.
 """
 
 import json
@@ -12,11 +14,17 @@ import time
 import tomllib
 import urllib.request
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ORGANISATIONS = re.compile(r"github\.com/(quantinuum|cqcl)(/|$)", re.IGNORECASE)
 EMAIL = re.compile(r"@quantinuum\.com\b", re.IGNORECASE)
+README_SECTION = "## Included tools"
+# A package is a list item, or the second cell of a table row.
+README_PACKAGE = re.compile(
+    r"^(?:[-*] |\|[^|\n]*\| )`([A-Za-z0-9_.-]+)`(?: \||$)", re.MULTILINE
+)
 
 
 def normalise(name: str) -> str:
@@ -93,22 +101,57 @@ def unpinned(
     project: dict, lock: dict, info: Callable[[str, str], dict]
 ) -> list[tuple[str, str]]:
     pins = pinned(project["dependencies"])
-    return [
+    candidates = [
         (name, version)
         for name, version in sorted(runtime_packages(lock, project["name"]))
-        if normalise(name) not in pins and is_quantinuum(info(name, version))
+        if normalise(name) not in pins
     ]
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        metadata = list(pool.map(lambda package: info(*package), candidates))
+    return [
+        package for package, data in zip(candidates, metadata) if is_quantinuum(data)
+    ]
+
+
+def readme_packages(readme: str) -> set[str]:
+    """Return the package names listed in the README's tools section."""
+    lines = readme.splitlines()
+    start = lines.index(README_SECTION) + 1
+    end = next(
+        (i for i in range(start, len(lines)) if lines[i].startswith("## ")),
+        len(lines),
+    )
+    section = "\n".join(lines[start:end])
+    return {normalise(name) for name in README_PACKAGE.findall(section)}
+
+
+def readme_mismatches(project: dict, readme: str) -> tuple[list[str], list[str]]:
+    """Return pinned packages missing from the README, and listed ones not pinned."""
+    pins, listed = pinned(project["dependencies"]), readme_packages(readme)
+    return sorted(pins - listed), sorted(listed - pins)
 
 
 if __name__ == "__main__":
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
     lock = tomllib.loads((ROOT / "uv.lock").read_text())
+    readme = (ROOT / "README.md").read_text()
+    unlisted, unexpected = readme_mismatches(project, readme)
+    for name in unlisted:
+        print(
+            f"::error file=README.md::List the pinned package {name} under "
+            f'"{README_SECTION}"'
+        )
+    for name in unexpected:
+        print(
+            f"::error file=README.md::{name} is listed under "
+            f'"{README_SECTION}" but is not pinned in project.dependencies'
+        )
     missing = unpinned(project, lock, pypi_info)
     for name, version in missing:
         print(
             f"::error file=pyproject.toml::Pin the Quantinuum package {name}: "
             f'add "{name}=={version}" to project.dependencies'
         )
-    if missing:
+    if unlisted or unexpected or missing:
         sys.exit(1)
-    print("Every Quantinuum package in uv.lock is pinned.")
+    print("Every Quantinuum package in uv.lock is pinned and listed in the README.")

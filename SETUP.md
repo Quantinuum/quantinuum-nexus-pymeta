@@ -49,6 +49,8 @@ just hooks ruff-format --all-files
 ```
 
 Commits that change dependency or packaging configuration also check the lockfile.
+Commits that change `pyproject.toml`, `uv.lock`, or `README.md` also run the
+**Quantinuum pins** check (`just check-pins`), which needs network access to PyPI.
 Run script tests explicitly with `just test-scripts 3.12` during development;
 `just test-scripts` runs the suite on every supported Python minor. Distribution
 installation tests run in CI and through `just test-package` or `just test-all`.
@@ -98,28 +100,38 @@ dependencies, checking that the release lock file is complete and consistent.
 
 GitHub CI runs on pull requests, the merge queue, explicit workflow dispatches,
 and tagged-release validation. Script tests and the lockfile check run once on Ubuntu/Python 3.12,
-matching the automation workflows. Both installation formats are tested on every
-stable CPython minor version in the declared Python range using `ubuntu-latest`,
+matching the automation workflows. To limit runner usage, installation is tested
+only on the oldest and newest CPython minor versions in the declared Python
+range, one after the other in a single job per platform: `ubuntu-latest`,
 `windows-latest`, `macos-latest` (Apple Silicon), and `macos-26-intel` (the latest
-standard Intel macOS image), excluding the unsupported Intel macOS/Python 3.14
-combination. The explicit Intel label needs updating when GitHub
-introduces a newer image. CI uses the same pytest runner as the just recipes.
+standard Intel macOS image). Intel macOS tests Python 3.13 as its newest version,
+because Python 3.14 is not supported there. The explicit Intel label needs
+updating when GitHub introduces a newer image. CI uses the same pytest runner as
+the just recipes; `just test-package` covers every supported version locally.
 The required **Installation checks** status covers the script tests, the RC
-dependency freeze, the Quantinuum pin check, and the full installation matrix.
+dependency freeze, the Quantinuum pin check, and the installation matrix. A new
+push to a pull request cancels CI still running for its previous commit;
+merge-queue, dispatched, and release-validation runs are never cancelled.
 
 ## One-time repository setup
 
 1. Use `main` as the default development branch. Set `.github/preview.json` to
    the upcoming series and enable Actions. Under Settings → General → Pull
    Requests, allow squash merges with the default message **Pull request title
-   and description** to preserve promotion footers, enable **Allow auto-merge**,
-   and enable **Automatically delete head branches**.
+   and description** to preserve promotion footers, disable **Allow merge
+   commits** and **Allow rebase merging**, enable **Allow auto-merge**, and
+   enable **Automatically delete head branches**. Renovate chooses its
+   auto-merge method from these settings, so leaving other methods enabled lets
+   it request one that the release branch ruleset rejects.
 2. Renovate runs in this repository's **Renovate** workflow
    (`.github/workflows/renovate.yml`), so no app installation is needed. It runs
    every four hours, on manual dispatch, when `renovate.json` changes on `main`,
    and when a maintainer checks a box in the Dependency Dashboard issue. It
    reads `renovate.json` from `main` and authenticates as the release bot with
-   `HUGRBOT_PAT`, so its PRs trigger CI normally.
+   `HUGRBOT_PAT`, so its PRs trigger CI normally. The workflow sets the git
+   author of its commits to the bot account; the commits are unsigned, because
+   GitHub signs API commits only for GitHub App tokens. Update `RENOVATE_GIT_AUTHOR` in the
+   workflow if the token's account changes.
 3. Set `HUGRBOT_PAT` to the release bot account's personal access token. It needs
    Contents, Pull requests, and Issues read/write, plus Actions read permission
    for validating candidates. For Renovate, it also needs Commit statuses and
@@ -147,10 +159,17 @@ dependency freeze, the Quantinuum pin check, and the full installation matrix.
      so promotion can create a release branch from its RC.
 
    Require no approving reviews so the release bot can merge eligible Renovate
-   and release PRs after CI. Additional human/code-owner review requirements prevent
-   unattended merges until those reviews arrive. The bot does not bypass required
-   checks. Limit release-branch creation to maintainers and the release bot if
-   repository rules allow it.
+   and release PRs after CI. The release bot opens every release-branch PR and
+   cannot approve its own PRs, so the **release branches** ruleset should also
+   require the **Release review** status check
+   (`.github/workflows/release-review.yml`). It enforces maintainer approval for
+   everything except eligible patch updates; see
+   [Merge queue](MAINTAINING.md#merge-queue). Add this check only once every supported
+   release branch contains the workflow, because PRs into a branch without it
+   would never receive the status. Additional human/code-owner review
+   requirements prevent unattended merges until those reviews arrive. The bot
+   does not bypass required checks. Limit release-branch creation to maintainers
+   and the release bot if repository rules allow it.
 
    GitHub auto-merge waits only for required status checks. Without these
    rulesets, automatic merges by Renovate and the release bot can happen before

@@ -14,11 +14,19 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels its superseded run. Merge-queue,
+# dispatched, and release-validation runs get unique groups and are never
+# cancelled.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.event.pull_request.number) || format('ci-{0}-{1}', github.run_id, github.run_attempt) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   python-versions:
     runs-on: ubuntu-latest
     outputs:
-      versions: ${{ steps.matrix.outputs.versions }}
+      oldest: ${{ steps.matrix.outputs.oldest }}
+      newest: ${{ steps.matrix.outputs.newest }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -28,7 +36,7 @@ jobs:
         with:
           python-version: '3.12'
       - id: matrix
-        run: echo "versions=$(python scripts/python_matrix.py)" >> "$GITHUB_OUTPUT"
+        run: python scripts/python_matrix.py >> "$GITHUB_OUTPUT"
 
   dependency-freeze:
     name: Dependency freeze
@@ -40,6 +48,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.sha }}
+          # Release branches compare against their RC tag.
+          fetch-depth: ${{ startsWith(github.base_ref, 'release/') && '0' || '1' }}
           persist-credentials: false
       - uses: actions/setup-python@v7
         with:
@@ -47,11 +57,19 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           version: '0.13.5'
-      - name: Hold Renovate updates to main during the RC freeze
+      - name: Keep an unreleased stable version identical to its RC
+        if: github.event_name == 'pull_request' && startsWith(github.base_ref, 'release/')
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py verify-promotion --unreleased
+      - name: Hold Renovate dependency updates to main during the RC freeze
         if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         env:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/dependency_freeze.py
+      - name: Check the preview selection
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py check-preview
 
   quantinuum-pins:
     name: Quantinuum pins
@@ -64,21 +82,25 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: Require exact pins for Quantinuum packages in uv.lock
+      - name: Require exact, documented pins for Quantinuum packages in uv.lock
         run: python scripts/quantinuum_pins.py
 
   install:
     needs: python-versions
-    name: Install (${{ matrix.os }}, Python ${{ matrix.python }})
+    name: Install (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    env:
+      OLDEST: ${{ needs.python-versions.outputs.oldest }}
+      NEWEST: ${{ matrix.newest || needs.python-versions.outputs.newest }}
     strategy:
       fail-fast: false
+      # One job per platform tests the oldest and newest supported Python in turn.
       matrix:
         os: [ubuntu-latest, macos-latest, macos-26-intel, windows-latest]
-        python: ${{ fromJSON(needs.python-versions.outputs.versions) }}
-        exclude:
+        include:
+          # Python 3.14 is not supported on Intel macOS.
           - os: macos-26-intel
-            python: '3.14'
+            newest: '3.13'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -86,18 +108,20 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python }}
+          python-version: |
+            ${{ env.OLDEST }}
+            ${{ env.NEWEST }}
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           version: '0.13.5'
       - name: Verify lockfile
-        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        if: matrix.os == 'ubuntu-latest'
         run: python scripts/uv_pypi.py lock --check
       - name: Test repository scripts
-        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        if: matrix.os == 'ubuntu-latest'
         run: python scripts/tasks.py scripts 3.12
       - name: Test package installation
-        run: python scripts/tasks.py package ${{ matrix.python }}
+        run: python scripts/tasks.py package ${{ env.OLDEST }} ${{ env.NEWEST }}
 
   required:
     name: Installation checks

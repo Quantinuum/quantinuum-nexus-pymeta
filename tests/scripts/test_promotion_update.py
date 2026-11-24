@@ -77,14 +77,16 @@ class TestPromotionUpdate:
                 )
                 (seed / "pyproject.toml").write_text(project)
                 (seed / "uv.lock").write_text(lock)
+                (seed / "README.md").write_text(f"{tag}\n")
                 self.git(seed, "add", ".")
                 self.git(seed, "commit", "-m", tag)
                 self.git(seed, "tag", tag)
                 self.candidates[tag] = self.git(seed, "rev-parse", "HEAD")
                 self.metadata[tag] = (project, lock)
             self.git(seed, "push", "origin", "--tags")
-            self.git(seed, "switch", "-c", self.branch, "main")
             tag = f"v{self.target}rc1"
+            # The first promotion branches from the release branch created at its RC.
+            self.git(seed, "switch", "-c", self.branch, tag)
             release.write_promotion(
                 self.target, tag, self.candidates[tag], *self.metadata[tag]
             )
@@ -137,7 +139,11 @@ class TestPromotionUpdate:
         tag = f"v{self.target}rc{counter}"
         api.actions.list_workflow_runs.return_value = {
             "workflow_runs": [
-                {"head_sha": self.candidates[tag], "conclusion": "success"}
+                {
+                    "head_sha": self.candidates[tag],
+                    "head_branch": tag,
+                    "conclusion": "success",
+                }
             ]
         }
 
@@ -382,12 +388,17 @@ class TestPromotionUpdate:
         self.promote(2)
         head = self.remote_head()
         assert head != self.original_head
-        assert (
-            self.git(
-                self.scratch, "--git-dir", str(self.origin), "rev-parse", f"{head}^"
-            )
-            == self.original_head
-        )
+        # The update is appended to the reviewed branch and includes every change in the RC.
+        assert self.git(
+            self.scratch,
+            "--git-dir",
+            str(self.origin),
+            "rev-list",
+            "--parents",
+            "-n1",
+            head,
+        ).split()[1:] == [self.original_head, self.candidates[f"v{self.target}rc2"]]
+        assert self.read_remote("README.md") == f"v{self.target}rc2"
         assert json.loads(self.read_remote(".github/stable-candidate.json")) == {
             "version": self.target,
             "tag": f"v{self.target}rc2",

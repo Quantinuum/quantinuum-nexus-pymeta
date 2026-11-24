@@ -29,10 +29,11 @@ tested versions.
 The **Quantinuum pins** CI check (`scripts/quantinuum_pins.py`) enforces this.
 It looks up each runtime package in `uv.lock` on PyPI and fails when a
 package linking to github.com/Quantinuum or github.com/CQCL, or maintained
-from a quantinuum.com address, is not pinned. To add a component, pin it and
-any new Quantinuum packages it pulls in, then run `uv lock`. When a Renovate
-update introduces a new Quantinuum dependency, push the missing pin to the
-Renovate branch.
+from a quantinuum.com address, is not pinned. It also fails when the README's
+"Included tools" section does not list exactly the pinned packages. To add a
+component, pin it and any new Quantinuum packages it pulls in, list them in the
+README, then run `uv lock`. When a Renovate update introduces a new Quantinuum
+dependency, push the missing pin and README entry to the Renovate branch.
 
 ### Dependency updates with Renovate
 
@@ -56,8 +57,11 @@ Renovate updates `uv.lock` with the same uv version CI uses.
 
 Development tools and build requirements are grouped as `chore(deps):` on every
 branch and require review; they never trigger a release. GitHub Actions updates
-target `main` only, as `ci(deps):`, and also require review. The supported
-Python range is never changed by Renovate. The Dependency Dashboard issue that
+target `main` only, as `ci(deps):`, and also require review. A uv update
+changes the workflows, the uv constraint in `renovate.json`, and the version in
+`SETUP.md` together, so CI and Renovate always use the same uv. The workflows'
+Python version follows `.python-version` and is not updated by Renovate, nor is
+the supported Python range. The Dependency Dashboard issue that
 Renovate opens lists pending and rate-limited updates; checking a box there
 starts a workflow run that creates or rebases that update.
 
@@ -78,11 +82,27 @@ auto-merge merges them once **Installation checks** passes on the updated
 branch.
 
 During the RC freeze (`channel` is `rc` in `.github/preview.json`), the
-**Dependency freeze** CI check fails for Renovate PRs into `main`. They stay
-open until `main` returns to a beta channel. Renovate rebases automerging
+**Dependency freeze** CI check fails for Renovate PRs into `main` that change
+`pyproject.toml` or `uv.lock`, including development tool updates. They stay
+open until `main` returns to a beta channel. Tooling-only updates, such as
+workflow actions and uv, are not held. Renovate rebases automerging
 updates when `main` changes; for the others, check their boxes (or the box to
 rebase all open PRs) in the Dependency Dashboard so CI runs again. Other PRs,
-and release branches, are unaffected.
+and release branches, are unaffected. CI also rejects a PR that makes
+`.github/preview.json` invalid or returns a series to beta after its first RC.
+
+On a release branch, CI keeps an unreleased `.0` identical to its selected RC:
+until the stable tag exists, a PR into the branch fails if its package metadata
+or lockfile differs from the RC. The **Release Please** workflow repeats this
+check before tagging.
+
+Every release-branch PR is opened by the release bot, so the **Release review**
+check, rather than GitHub's approval count, decides which PRs need review. It
+passes for Renovate PRs that only apply patch upgrades to existing runtime pins,
+and for release PRs that the **Release Please** workflow would merge
+automatically. Any other PR needs an approval of its current commit from a
+maintainer with write access other than its author, and no outstanding change
+requests.
 
 Installation tests do not establish behavioral compatibility; maintainers must
 assess that separately.
@@ -100,7 +120,9 @@ following hold:
   and no pin was added or removed.
 
 Otherwise it leaves the PR for review, disabling auto-merge if it was enabled
-for an earlier state. So a minor upgrade requires human review of both the
+for an earlier state. Each run disables existing auto-merge before
+re-evaluating, so a failed run never leaves a newer revision queued. If the PR's
+checks have already passed, it merges the PR directly. So a minor upgrade requires human review of both the
 dependency PR and the SDK release PR. Use `fix:` for package corrections that
 need a release and `chore:` for routine tooling changes.
 
@@ -132,8 +154,20 @@ Set `.github/preview.json` on `main` to the intended target and channel:
 ```
 
 Targets use `YY.SERIES.0`, with a positive series number without leading zeros.
-Choose a target newer than all published stable series. Series numbers have no
-annual limit; start at 1 for a new year.
+Choose a target newer than all published stable series; CI rejects older
+targets. Series numbers have no annual limit; start at 1 for a new year.
+
+Once a target has an RC, CI rejects selecting another target until that RC's
+stable release is published, so the freeze cannot be lifted by accident. To
+abandon an RC series deliberately, list it in `abandoned`:
+
+```json
+{
+  "target": "26.3.0",
+  "channel": "beta",
+  "abandoned": ["26.2.0"]
+}
+```
 
 Pushes to `main` create numbered previews such as `26.2.0b1` when `fix:` or
 `feat:` commits have appeared since the latest preview source. Scoped commits and
@@ -161,12 +195,16 @@ must be validated before promotion.
    configuration and manifest.
 3. Review and merge the promotion PR, preserving its `Release-As` footer. Configure
    squash merges to use the PR title and description. A newer RC updates the
-   existing promotion PR, dismisses stale approvals, and requires fresh CI.
+   existing promotion PR with a merge of that RC, so all of its changes reach
+   the release branch, not only its pins. The `.0` changelog then lists the
+   promotion as one entry rather than each commit since the earlier RC. It also dismisses stale approvals and
+   requires fresh CI.
    Older RCs and moved candidate tags are rejected. Retries recover a pushed
    branch when PR creation fails; concurrent pushes are not overwritten.
-4. Review and merge the Release Please PR for `.0`. Avoid dependency changes
-   between promotion and publication: the publisher requires the selected RC's
-   exact metadata and lockfile for the first stable release. Renovate does not
+4. Review and merge the Release Please PR for `.0`. The publisher requires the
+   selected RC's exact metadata and lockfile for the first stable release, so
+   CI rejects dependency changes to the branch until the `.0` is tagged. To
+   change dependencies, cut a new RC on `main` and promote it. Renovate does not
    update the new branch until the `.0` is published; from then on, it receives
    dependency updates and automatic patch releases.
 5. On `main`, update the preview target to the following series and reset its
@@ -189,7 +227,7 @@ If necessary, backport current release tooling before starting this process.
 
 Release Please and preview creation produce draft GitHub releases with existing
 tags and explicitly dispatch **Validate and publish** on the tag. The publisher
-verifies the tag, tests the full installation matrix, builds a wheel and source
+verifies the tag, runs the installation checks, builds a wheel and source
 distribution, exports `pylock.toml` from the release commit's `uv.lock`, and
 verifies uploaded assets before publishing the release.
 Older-series patches and previews do not become GitHub's latest stable release.
@@ -198,8 +236,9 @@ and release publication cannot overlap across tags. Installation checks for
 different tags can run concurrently.
 
 To retry, dispatch **Validate and publish** with the existing tag. For RCs,
-select the tag as the workflow ref too, so promotion can find the successful run
-for that exact RC commit. Beta and stable retries can run from `main`. The
+select the tag as the workflow ref too: promotion only accepts a successful run
+from the RC's own tag ref, and the publisher rejects a tag ref that differs from
+the tag being published. Beta and stable retries can run from `main`. The
 publisher uses current tooling from `main` to attach the distributions built
 from the verified release commit. Matching assets are reused; differing or incomplete
 assets fail rather than being replaced. Do not reuse a version for different

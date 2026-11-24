@@ -1,5 +1,6 @@
 """Validate release series version sequencing, RC promotion, and dependency preservation."""
 
+import subprocess
 import tomllib
 from unittest.mock import patch
 
@@ -26,6 +27,47 @@ class TestPreview:
         for channel in ("beta", "rc"):
             with pytest.raises(ValueError, match="already been released"):
                 release.next_preview("26.2.0", channel, ["v26.2.0"])
+
+    def test_preview_selection_is_checked_before_merging(self):
+        tags = ["v26.1.0rc1", "v26.1.0", "v26.2.0b1"]
+        release.check_preview({"target": "26.1.0", "channel": "rc"}, tags)
+        release.check_preview({"target": "26.2.0", "channel": "rc"}, tags)
+        release.check_preview({"target": "26.3.0", "channel": "beta"}, tags)
+        for config in [
+            {"target": "26.2.0", "channel": "RC"},
+            {"target": "26.1.0", "channel": "invalid"},
+            {"target": "26.2", "channel": "rc"},
+            {"target": "26.2.0"},
+            {"target": "26.2.0", "channel": "rc", "extra": True},
+            {"target": "26.2.0", "channel": "rc", "abandoned": "26.1.0"},
+            {"target": "26.2.0", "channel": "rc", "abandoned": [26]},
+        ]:
+            with pytest.raises(ValueError):
+                release.check_preview(config, tags)
+
+    def test_preview_target_cannot_precede_a_published_stable_series(self):
+        tags = ["v26.1.0", "v26.2.0rc1", "v26.2.0"]
+        with pytest.raises(ValueError, match="older"):
+            release.check_preview({"target": "26.1.0", "channel": "rc"}, tags)
+        release.check_preview({"target": "26.2.0", "channel": "rc"}, tags)
+
+    def test_active_rc_must_be_released_or_abandoned_before_switching(self):
+        tags = ["v26.1.0", "v26.2.0b1", "v26.2.0rc1"]
+        release.check_preview({"target": "26.2.0", "channel": "rc"}, tags)
+        for config in [
+            {"target": "26.3.0", "channel": "beta"},
+            {"target": "26.1.0", "channel": "rc"},
+        ]:
+            with pytest.raises(ValueError, match="abandon"):
+                release.check_preview(config, tags)
+        with pytest.raises(ValueError, match="freeze"):
+            release.check_preview({"target": "26.2.0", "channel": "beta"}, tags)
+        release.check_preview(
+            {"target": "26.3.0", "channel": "beta", "abandoned": ["26.2.0"]}, tags
+        )
+        release.check_preview(
+            {"target": "26.3.0", "channel": "beta"}, tags + ["v26.2.0"]
+        )
 
     def test_invalid_targets_and_channels_are_rejected(self):
         for target, channel in [
@@ -141,21 +183,51 @@ class TestStamp:
 
 
 class TestPromotion:
+    def test_unreleased_check_skips_a_tagged_stable_version(self, tmp_path):
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "x"\nversion = "26.2.0"\n'
+        )
+        with (
+            patch.object(release, "ROOT", tmp_path),
+            patch.object(release, "command", return_value="v26.2.0") as command,
+        ):
+            release.verify_promotion(unreleased=True)
+        command.assert_called_once_with("git", "tag", "--list", "v26.2.0")
+        with (
+            patch.object(release, "ROOT", tmp_path),
+            patch.object(release, "command", return_value=""),
+            pytest.raises(FileNotFoundError),
+        ):
+            # An untagged .0 release must name its RC.
+            release.verify_promotion(unreleased=True)
+
     def test_changelog_starts_where_the_latest_older_series_branched(self):
         tags = "v26.1.0\nv26.1.10\nv26.1.9\nv26.2.0rc1\nv26.2.0\nv27.1.0rc1\n"
         with patch.object(
-            release, "command", side_effect=[tags, "branch-point"]
+            release, "command", side_effect=[tags, '{"sha": "rc"}', "branch-point"]
         ) as command:
             assert release.previous_series_start("27.1.0", "candidate") == (
                 "branch-point"
             )
+        command.assert_called_with("git", "merge-base", "candidate", "rc")
+        unpromoted = subprocess.CalledProcessError(128, "git show")
+        with patch.object(
+            release, "command", side_effect=[tags, unpromoted, "branch-point"]
+        ) as command:
+            release.previous_series_start("27.1.0", "candidate")
         command.assert_called_with("git", "merge-base", "candidate", "v26.2.0^{commit}")
         with patch.object(release, "command", return_value="v26.1.0rc1\n"):
             assert release.previous_series_start("26.1.0", "candidate") is None
 
     def test_only_a_successfully_published_rc_can_be_promoted(self):
         published = {"draft": False, "prerelease": True}
-        success = [{"head_sha": "candidate", "conclusion": "success"}]
+        success = [
+            {
+                "head_sha": "candidate",
+                "head_branch": "v26.2.0rc2",
+                "conclusion": "success",
+            }
+        ]
         assert (
             release.validate_candidate("v26.2.0rc2", published, success, "candidate")
             == "26.2.0"
@@ -166,16 +238,11 @@ class TestPromotion:
             ("v26.2.0rc2", {"draft": True, "prerelease": True}, success),
             ("v26.2.0rc2", {"draft": False, "prerelease": False}, success),
             ("v26.2.0rc2", published, []),
-            (
-                "v26.2.0rc2",
-                published,
-                [{"head_sha": "other", "conclusion": "success"}],
-            ),
-            (
-                "v26.2.0rc2",
-                published,
-                [{"head_sha": "candidate", "conclusion": "failure"}],
-            ),
+            ("v26.2.0rc2", published, [success[0] | {"head_sha": "other"}]),
+            ("v26.2.0rc2", published, [success[0] | {"conclusion": "failure"}]),
+            # A run dispatched from another ref can publish a different tag.
+            ("v26.2.0rc2", published, [success[0] | {"head_branch": "main"}]),
+            ("v26.2.0rc2", published, [success[0] | {"head_branch": "v26.2.0b1"}]),
         ]:
             with pytest.raises(ValueError):
                 release.validate_candidate(tag, metadata, runs, "candidate")

@@ -29,6 +29,7 @@ def release_pr(**changes):
         "state": "open",
         "draft": False,
         "auto_merge": None,
+        "mergeable_state": "blocked",
         "user": {"login": BOT},
         "base": {
             "ref": "release/26.1",
@@ -104,6 +105,7 @@ def fake_api(
 def queue(api, monkeypatch):
     run = Mock()
     monkeypatch.setattr(release_automerge.subprocess, "run", run)
+    monkeypatch.setattr(release_automerge.time, "sleep", Mock())
     release_automerge.queue_release(api, 5, BOT, "owner/repo")
     return [call.args[0] for call in run.call_args_list]
 
@@ -180,6 +182,39 @@ def test_disables_auto_merge_when_a_release_pr_becomes_ineligible(monkeypatch):
     )
     assert queue(api, monkeypatch) == [
         ["gh", "pr", "merge", "5", "--repo", "owner/repo", "--disable-auto"]
+    ]
+
+
+def test_reevaluation_happens_with_auto_merge_disabled(monkeypatch):
+    api = fake_api(pr=release_pr(auto_merge={"merge_method": "squash"}))
+    api.repos.get_content = Mock(side_effect=APIError("Unavailable", status_code=503))
+    run = Mock()
+    monkeypatch.setattr(release_automerge.subprocess, "run", run)
+    with pytest.raises(APIError):
+        release_automerge.queue_release(api, 5, BOT, "owner/repo")
+    assert [call.args[0][-1] for call in run.call_args_list] == ["--disable-auto"]
+
+
+@pytest.mark.parametrize("initial", ["clean", "unknown"])
+def test_a_release_pr_whose_checks_passed_is_merged_directly(monkeypatch, initial):
+    api = fake_api(pr=release_pr(mergeable_state=initial))
+    # GitHub reports "unknown" until it has computed the state.
+    api.pulls.get.side_effect = [
+        release_pr(mergeable_state=initial),
+        release_pr(mergeable_state="clean"),
+    ]
+    assert queue(api, monkeypatch) == [
+        [
+            "gh",
+            "pr",
+            "merge",
+            "5",
+            "--repo",
+            "owner/repo",
+            "--squash",
+            "--match-head-commit",
+            "head",
+        ]
     ]
 
 

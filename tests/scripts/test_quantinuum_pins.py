@@ -87,3 +87,24 @@ def test_identifies_quantinuum_packages_from_links_and_people():
         {"project_urls": {"Fork": "https://github.com/CQCL-fork/tool"}}
     )
     assert not quantinuum_pins.is_quantinuum({})
+
+
+def test_readme_must_list_exactly_the_pinned_packages():
+    project = {"dependencies": ["guppylang==1.2.1", "Qwasm==1.0.1", "numpy>=2"]}
+    readme = "\n".join(
+        [
+            "# SDK",
+            "Installs `quantinuum-nexus`.",
+            "## Included tools",
+            "| Guppy | `guppylang` | Write programs. |",
+            "Packages use `uv` and need `numpy`.",
+            "### Supporting packages",
+            "- `hugr`",
+            "## Installation",
+            "Run `uv add quantinuum-nexus` to use `qwasm`.",
+        ]
+    )
+    assert quantinuum_pins.readme_mismatches(project, readme) == (
+        ["qwasm"],
+        ["hugr"],
+    )
