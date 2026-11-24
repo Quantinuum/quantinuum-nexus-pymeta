@@ -41,16 +41,50 @@ def next_preview(target: str, channel: str, tags: list[str]) -> str:
     return f"{target}{suffix}{max(numbers, default=0) + 1}"
 
 
+def series_key(version: str) -> tuple[int, int]:
+    year, series = version.split(".")[:2]
+    return int(year), int(series)
+
+
 def check_preview(config: dict, tags: list[str]):
-    """Reject a preview selection that the Preview workflow would fail on after merging."""
-    if set(config) != {"target", "channel"} or not all(
-        isinstance(value, str) for value in config.values()
+    """Reject a preview selection that the Preview workflow or promotion would reject."""
+    abandoned = config.get("abandoned", [])
+    if (
+        not {"target", "channel"} <= set(config) <= {"target", "channel", "abandoned"}
+        or not isinstance(config["target"], str)
+        or not isinstance(config["channel"], str)
+        or not isinstance(abandoned, list)
+        or not all(isinstance(item, str) for item in abandoned)
     ):
-        raise ValueError("preview.json must contain only a target and a channel")
-    check_selection(config["target"], config["channel"])
+        raise ValueError(
+            "preview.json must contain a target, a channel, and optionally a list of abandoned RC targets"
+        )
+    target = config["target"]
+    check_selection(target, config["channel"])
+    stable = [
+        series_key(tag[1:]) for tag in tags if re.fullmatch(r"v\d+\.\d+\.\d+", tag)
+    ]
+    latest = max(stable, default=None)
+    if latest and series_key(target) < latest:
+        raise ValueError("The target must not be older than a published stable series")
+    # An RC series remains active until its stable release or explicit abandonment.
+    active = {
+        f"{item[1]}.{item[2]}.0"
+        for item in (VERSION.fullmatch(tag.removeprefix("v")) for tag in tags)
+        if item
+        and item[3] == "rc"
+        and f"v{item[1]}.{item[2]}.0" not in tags
+        and (not latest or (int(item[1]), int(item[2])) > latest)
+    }
+    pending = sorted(active - {target} - set(abandoned))
+    if pending:
+        raise ValueError(
+            f"Release or abandon the {', '.join(pending)} RC before selecting another target; "
+            'to abandon it, list it in "abandoned"'
+        )
     # Previews of a released series are skipped until main selects the next target.
-    if f"v{config['target']}" not in tags:
-        next_preview(config["target"], config["channel"], tags)
+    if f"v{target}" not in tags:
+        next_preview(target, config["channel"], tags)
 
 
 def stamp(project_text: str, lock_text: str, version: str) -> tuple[str, str]:
@@ -197,8 +231,13 @@ def validate_candidate(tag: str, release: dict, runs: list[dict], sha: str):
         raise ValueError("Promotion requires an RC tag such as v26.2.0rc1")
     if release["draft"] or not release["prerelease"]:
         raise ValueError("The RC must be a published GitHub prerelease")
+    # verify_release requires a release tag ref to match the published tag, so a
+    # run from this tag's ref cannot have published another release.
     if not any(
-        run["head_sha"] == sha and run["conclusion"] == "success" for run in runs
+        run["head_sha"] == sha
+        and run["head_branch"] == tag
+        and run["conclusion"] == "success"
+        for run in runs
     ):
         raise ValueError(
             "The RC's Validate and publish workflow must succeed before promotion"
@@ -217,11 +256,14 @@ def verify_candidate_files(
         raise ValueError("Stable dependency lockfile differs from the selected RC")
 
 
-def verify_promotion():
+def verify_promotion(unreleased: bool = False):
     project = (ROOT / "pyproject.toml").read_text()
     version = tomllib.loads(project)["project"]["version"]
     match = VERSION.fullmatch(version)
     if not match or match[3]:
+        return
+    if unreleased and command("git", "tag", "--list", f"v{version}"):
+        print(f"v{version} has been released; later changes are patch updates")
         return
     candidate = json.loads((ROOT / ".github/stable-candidate.json").read_text())
     if candidate["version"] != version or not re.fullmatch(
@@ -466,7 +508,11 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(dest="action", required=True)
     subparsers.add_parser("preview").add_argument("--force", action="store_true")
     subparsers.add_parser("promote").add_argument("tag")
-    subparsers.add_parser("verify-promotion")
+    subparsers.add_parser("verify-promotion").add_argument(
+        "--unreleased",
+        action="store_true",
+        help="skip a stable version that has already been tagged",
+    )
     subparsers.add_parser("check-preview")
     args = parser.parse_args()
     if args.action == "preview":
@@ -479,4 +525,4 @@ if __name__ == "__main__":
             [tag["name"] for tag in all_items(create_client().repos.list_tags)],
         )
     else:
-        verify_promotion()
+        verify_promotion(unreleased=args.unreleased)

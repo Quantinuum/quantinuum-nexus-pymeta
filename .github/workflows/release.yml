@@ -29,6 +29,17 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           version: '0.13.5'
+      - name: Check out the release branch
+        uses: actions/checkout@v7
+        with:
+          path: release
+          fetch-depth: 0
+          persist-credentials: false
+      # Release Please tags a merged .0 release PR, and publication requires the
+      # tagged commit to match its RC; stop before tagging a mismatch.
+      - name: Keep an unreleased stable version identical to its RC
+        working-directory: release
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py verify-promotion --unreleased
       - name: Check series support and branch version
         id: policy
         env:

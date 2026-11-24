@@ -53,6 +53,11 @@ Macs, use Python 3.12 or 3.13. This restriction also applies to an Intel Python
 interpreter running through Rosetta on an Apple Silicon Mac; use a native ARM64
 interpreter for Python 3.14.
 
+To limit CI usage, each change is installation-tested on every platform with
+the oldest and newest supported Python versions (3.12 and 3.14, or 3.12 and 3.13
+on Intel macOS). Python 3.13 on the other platforms is supported, but tested
+through the full local installation tests rather than on every change.
+
 Python 3.15 and later are outside this release's supported range. The pinned
 `guppyalgos` version requires Python below 3.15.
 

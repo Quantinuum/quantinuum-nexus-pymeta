@@ -159,10 +159,17 @@ merge-queue, dispatched, and release-validation runs are never cancelled.
      so promotion can create a release branch from its RC.
 
    Require no approving reviews so the release bot can merge eligible Renovate
-   and release PRs after CI. Additional human/code-owner review requirements prevent
-   unattended merges until those reviews arrive. The bot does not bypass required
-   checks. Limit release-branch creation to maintainers and the release bot if
-   repository rules allow it.
+   and release PRs after CI. The release bot opens every release-branch PR and
+   cannot approve its own PRs, so the **release branches** ruleset should also
+   require the **Release review** status check
+   (`.github/workflows/release-review.yml`). It enforces maintainer approval for
+   everything except eligible patch updates; see
+   [Merge queue](MAINTAINING.md#merge-queue). Add this check only once every supported
+   release branch contains the workflow, because PRs into a branch without it
+   would never receive the status. Additional human/code-owner review
+   requirements prevent unattended merges until those reviews arrive. The bot
+   does not bypass required checks. Limit release-branch creation to maintainers
+   and the release bot if repository rules allow it.
 
    GitHub auto-merge waits only for required status checks. Without these
    rulesets, automatic merges by Renovate and the release bot can happen before

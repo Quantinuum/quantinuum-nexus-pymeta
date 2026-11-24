@@ -139,7 +139,11 @@ class TestPromotionUpdate:
         tag = f"v{self.target}rc{counter}"
         api.actions.list_workflow_runs.return_value = {
             "workflow_runs": [
-                {"head_sha": self.candidates[tag], "conclusion": "success"}
+                {
+                    "head_sha": self.candidates[tag],
+                    "head_branch": tag,
+                    "conclusion": "success",
+                }
             ]
         }
 

@@ -65,6 +65,17 @@ def pins(text: str) -> dict | None:
     return result
 
 
+def patch_upgrades(before: dict | None, after: dict | None) -> bool:
+    """Whether every pin is unchanged or a patch upgrade, with none added or removed."""
+    if before is None or after is None or before.keys() != after.keys():
+        return False
+    return all(
+        before[name] == after[name]
+        or (after[name] > before[name] and after[name][:2] == before[name][:2])
+        for name in before
+    )
+
+
 def release_dependencies_allowed(api: GhApi, head: str, manifest: dict) -> bool:
     """Allow pins that are unchanged or patch upgrades since the previous release."""
     version = manifest.get(".")
@@ -76,14 +87,7 @@ def release_dependencies_allowed(api: GhApi, head: str, manifest: dict) -> bool:
         if error.status_code != 404:
             raise
         return False
-    before, after = pins(previous), pins(head)
-    if before is None or after is None or before.keys() != after.keys():
-        return False
-    return all(
-        before[name] == after[name]
-        or (after[name] > before[name] and after[name][:2] == before[name][:2])
-        for name in before
-    )
+    return patch_upgrades(pins(previous), pins(head))
 
 
 def release_pr_eligible(api: GhApi, pr: dict, release_bot: str) -> bool:

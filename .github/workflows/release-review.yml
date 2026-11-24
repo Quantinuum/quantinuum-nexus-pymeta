@@ -1,0 +1,42 @@
+name: Release review
+
+on:
+  pull_request:
+    branches: ['release/*']
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Release review
+    # pull_request_review has no branch filter.
+    if: startsWith(github.event.pull_request.base.ref, 'release/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: '0.13.5'
+      - name: Require approval unless the PR is an eligible patch update
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # The account that owns HUGRBOT_PAT and opens release-branch PRs.
+          RELEASE_BOT: hugrbot
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_review.py

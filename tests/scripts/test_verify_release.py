@@ -45,6 +45,30 @@ def test_only_matching_published_stable_beta_and_rc_versions_are_allowed(
             verify_release.verify_release(tag, api, event, workflow_sha)
 
 
+@pytest.mark.parametrize(
+    "ref,allowed",
+    [
+        ("refs/tags/v26.2.0rc1", True),
+        ("refs/heads/main", True),
+        ("refs/tags/v26.2.0rc2", False),
+        ("refs/heads/v26.2.0rc2", False),
+    ],
+)
+def test_dispatches_from_a_release_tag_must_use_the_published_tag(ref, allowed):
+    api = Mock(repository="owner/repo")
+    api.repos.get_release_by_tag.return_value = {"draft": False, "prerelease": True}
+    api.repos.get_commit.return_value = {"sha": "tag"}
+    if allowed:
+        verify_release.verify_release(
+            "v26.2.0rc1", api, "workflow_dispatch", "tag", ref
+        )
+    else:
+        with pytest.raises(ValueError, match="tag being published"):
+            verify_release.verify_release(
+                "v26.2.0rc1", api, "workflow_dispatch", "tag", ref
+            )
+
+
 def test_cli_writes_the_verified_sha_to_the_workflow_output(tmp_path, monkeypatch):
     api = Mock(repository="owner/repo")
     api.repos.get_release_by_tag.return_value = {"draft": False, "prerelease": False}
@@ -56,6 +80,7 @@ def test_cli_writes_the_verified_sha_to_the_workflow_output(tmp_path, monkeypatc
         "GH_TOKEN": "token",
         "GITHUB_EVENT_NAME": "release",
         "GITHUB_SHA": "verified",
+        "GITHUB_REF": "refs/tags/v26.1.0",
         "GITHUB_OUTPUT": str(output),
     }.items():
         monkeypatch.setenv(name, value)

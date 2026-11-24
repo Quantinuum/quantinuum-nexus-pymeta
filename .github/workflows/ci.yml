@@ -48,6 +48,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.sha }}
+          # Release branches compare against their RC tag.
+          fetch-depth: ${{ startsWith(github.base_ref, 'release/') && '0' || '1' }}
           persist-credentials: false
       - uses: actions/setup-python@v7
         with:
@@ -55,7 +57,10 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           version: '0.13.5'
-      - name: Hold Renovate updates to main during the RC freeze
+      - name: Keep an unreleased stable version identical to its RC
+        if: github.event_name == 'pull_request' && startsWith(github.base_ref, 'release/')
+        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py verify-promotion --unreleased
+      - name: Hold Renovate dependency updates to main during the RC freeze
         if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         env:
           GH_TOKEN: ${{ github.token }}
