@@ -100,14 +100,16 @@ dependencies, checking that the release lock file is complete and consistent.
 
 GitHub CI runs on pull requests, the merge queue, explicit workflow dispatches,
 and tagged-release validation. Script tests and the lockfile check run once on Ubuntu/Python 3.12,
-matching the automation workflows. Both installation formats are tested on every
-stable CPython minor version in the declared Python range using `ubuntu-latest`,
+matching the automation workflows. To limit runner usage, installation is tested
+only on the oldest and newest CPython minor versions in the declared Python
+range, one after the other in a single job per platform: `ubuntu-latest`,
 `windows-latest`, `macos-latest` (Apple Silicon), and `macos-26-intel` (the latest
-standard Intel macOS image), excluding the unsupported Intel macOS/Python 3.14
-combination. The explicit Intel label needs updating when GitHub
-introduces a newer image. CI uses the same pytest runner as the just recipes.
+standard Intel macOS image). Intel macOS tests Python 3.13 as its newest version,
+because Python 3.14 is not supported there. The explicit Intel label needs
+updating when GitHub introduces a newer image. CI uses the same pytest runner as
+the just recipes; `just test-package` covers every supported version locally.
 The required **Installation checks** status covers the script tests, the RC
-dependency freeze, the Quantinuum pin check, and the full installation matrix.
+dependency freeze, the Quantinuum pin check, and the installation matrix.
 
 ## One-time repository setup
 

@@ -1,4 +1,4 @@
-"""List the supported CPython minor versions for local tests and CI."""
+"""List the supported CPython minor versions for local tests, and their range for CI."""
 
 import json
 import re
@@ -46,4 +46,5 @@ def supported_versions() -> list[str]:
 
 
 if __name__ == "__main__":
-    print(json.dumps(supported_versions()))
+    versions = supported_versions()
+    print(f"oldest={versions[0]}\nnewest={versions[-1]}")

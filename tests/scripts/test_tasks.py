@@ -35,7 +35,7 @@ def test_test_commands_use_each_supported_interpreter_and_pinned_pytest(
         lambda name: {"pytest": "pytest==9.2.0", "ghapi": "ghapi==2.1.5"}[name],
     )
     monkeypatch.setattr(tasks, "run_uv", run)
-    tasks.run_tests(kind, "all")
+    tasks.run_tests(kind, ["all"])
     calls = [call.args for call in run.call_args_list]
     assert [call[call.index("--python") + 1] for call in calls] == [
         "3.12",
@@ -53,5 +53,15 @@ def test_unsupported_python_version_fails_before_running_tests(monkeypatch):
     monkeypatch.setattr(tasks, "supported_versions", lambda: ["3.12", "3.13", "3.14"])
     monkeypatch.setattr(tasks, "run_uv", run)
     with pytest.raises(ValueError, match="supported Python version"):
-        tasks.run_tests("scripts", "3.11")
+        tasks.run_tests("scripts", ["3.12", "3.11"])
     run.assert_not_called()
+
+
+def test_selected_versions_run_once_in_the_given_order(monkeypatch):
+    run = Mock()
+    monkeypatch.setattr(tasks, "supported_versions", lambda: ["3.12", "3.13", "3.14"])
+    monkeypatch.setattr(tasks, "tool_requirement", lambda name: f"{name}==1")
+    monkeypatch.setattr(tasks, "run_uv", run)
+    tasks.run_tests("package", ["3.14", "3.12", "3.14"])
+    calls = [call.args for call in run.call_args_list]
+    assert [call[call.index("--python") + 1] for call in calls] == ["3.14", "3.12"]

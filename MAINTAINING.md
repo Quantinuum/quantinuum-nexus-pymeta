@@ -198,7 +198,7 @@ If necessary, backport current release tooling before starting this process.
 
 Release Please and preview creation produce draft GitHub releases with existing
 tags and explicitly dispatch **Validate and publish** on the tag. The publisher
-verifies the tag, tests the full installation matrix, builds a wheel and source
+verifies the tag, runs the installation checks, builds a wheel and source
 distribution, exports `pylock.toml` from the release commit's `uv.lock`, and
 verifies uploaded assets before publishing the release.
 Older-series patches and previews do not become GitHub's latest stable release.

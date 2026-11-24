@@ -18,7 +18,8 @@ jobs:
   python-versions:
     runs-on: ubuntu-latest
     outputs:
-      versions: ${{ steps.matrix.outputs.versions }}
+      oldest: ${{ steps.matrix.outputs.oldest }}
+      newest: ${{ steps.matrix.outputs.newest }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -28,7 +29,7 @@ jobs:
         with:
           python-version: '3.12'
       - id: matrix
-        run: echo "versions=$(python scripts/python_matrix.py)" >> "$GITHUB_OUTPUT"
+        run: python scripts/python_matrix.py >> "$GITHUB_OUTPUT"
 
   dependency-freeze:
     name: Dependency freeze
@@ -74,16 +75,20 @@ jobs:
 
   install:
     needs: python-versions
-    name: Install (${{ matrix.os }}, Python ${{ matrix.python }})
+    name: Install (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    env:
+      OLDEST: ${{ needs.python-versions.outputs.oldest }}
+      NEWEST: ${{ matrix.newest || needs.python-versions.outputs.newest }}
     strategy:
       fail-fast: false
+      # One job per platform tests the oldest and newest supported Python in turn.
       matrix:
         os: [ubuntu-latest, macos-latest, macos-26-intel, windows-latest]
-        python: ${{ fromJSON(needs.python-versions.outputs.versions) }}
-        exclude:
+        include:
+          # Python 3.14 is not supported on Intel macOS.
           - os: macos-26-intel
-            python: '3.14'
+            newest: '3.13'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -91,18 +96,20 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python }}
+          python-version: |
+            ${{ env.OLDEST }}
+            ${{ env.NEWEST }}
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           version: '0.13.5'
       - name: Verify lockfile
-        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        if: matrix.os == 'ubuntu-latest'
         run: python scripts/uv_pypi.py lock --check
       - name: Test repository scripts
-        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        if: matrix.os == 'ubuntu-latest'
         run: python scripts/tasks.py scripts 3.12
       - name: Test package installation
-        run: python scripts/tasks.py package ${{ matrix.python }}
+        run: python scripts/tasks.py package ${{ env.OLDEST }} ${{ env.NEWEST }}
 
   required:
     name: Installation checks
