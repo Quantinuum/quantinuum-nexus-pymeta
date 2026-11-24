@@ -126,9 +126,9 @@ dependency freeze, the Quantinuum pin check, and the installation matrix.
    every four hours, on manual dispatch, when `renovate.json` changes on `main`,
    and when a maintainer checks a box in the Dependency Dashboard issue. It
    reads `renovate.json` from `main` and authenticates as the release bot with
-   `HUGRBOT_PAT`, so its PRs trigger CI normally. Its commits are created
-   through the GitHub API, so they are signed and verified; the workflow sets
-   the git author to the bot account. Update `RENOVATE_GIT_AUTHOR` in the
+   `HUGRBOT_PAT`, so its PRs trigger CI normally. The workflow sets the git
+   author of its commits to the bot account; the commits are unsigned, because
+   GitHub signs API commits only for GitHub App tokens. Update `RENOVATE_GIT_AUTHOR` in the
    workflow if the token's account changes.
 3. Set `HUGRBOT_PAT` to the release bot account's personal access token. It needs
    Contents, Pull requests, and Issues read/write, plus Actions read permission

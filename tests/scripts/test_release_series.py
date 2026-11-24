@@ -35,6 +35,7 @@ class TestPreview:
         for config in [
             {"target": "26.2.0", "channel": "beta"},
             {"target": "26.2.0", "channel": "RC"},
+            {"target": "26.1.0", "channel": "invalid"},
             {"target": "26.2", "channel": "rc"},
             {"target": "26.2.0"},
             {"target": "26.2.0", "channel": "rc", "extra": True},

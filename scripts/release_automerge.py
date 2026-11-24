@@ -9,6 +9,7 @@ import json
 import os
 import re
 import subprocess
+import time
 import tomllib
 
 from ghapi.core import APIError, GhApi
@@ -120,6 +121,19 @@ def release_pr_eligible(api: GhApi, pr: dict, release_bot: str) -> bool:
     return True
 
 
+def mergeable_state(api: GhApi, pr: dict) -> str:
+    """Return the PR's mergeable state, waiting while GitHub computes it."""
+    state = pr.get("mergeable_state", "unknown")
+    for _ in range(5):
+        if state != "unknown":
+            break
+        time.sleep(3)
+        state = api.pulls.get(pull_number=pr["number"]).get(
+            "mergeable_state", "unknown"
+        )
+    return state
+
+
 def queue_release(api: GhApi, number: int, release_bot: str, repository: str):
     pr = api.pulls.get(pull_number=number)
     command = ["gh", "pr", "merge", str(number), "--repo", repository]
@@ -132,7 +146,7 @@ def queue_release(api: GhApi, number: int, release_bot: str, repository: str):
         return
     merge = ["--squash", "--match-head-commit", pr["head"]["sha"]]
     # GitHub cannot enable auto-merge on a PR that is already mergeable.
-    if pr.get("mergeable_state") == "clean":
+    if mergeable_state(api, pr) == "clean":
         print(f"Merging release PR #{number}; its checks have passed.")
         subprocess.run(command + merge, check=True)
     else:

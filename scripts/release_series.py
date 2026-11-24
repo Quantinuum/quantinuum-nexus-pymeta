@@ -22,10 +22,14 @@ def command(*arguments: str) -> str:
     return subprocess.check_output(arguments, cwd=ROOT, text=True).strip()
 
 
-def next_preview(target: str, channel: str, tags: list[str]) -> str:
+def check_selection(target: str, channel: str):
     match = VERSION.fullmatch(target)
     if not match or match[3] or channel not in ("beta", "rc"):
         raise ValueError("Choose a YY.SERIES.0 target and beta or rc channel")
+
+
+def next_preview(target: str, channel: str, tags: list[str]) -> str:
+    check_selection(target, channel)
     if f"v{target}" in tags:
         raise ValueError("This series has already been released")
     suffix = "b" if channel == "beta" else "rc"
@@ -43,6 +47,7 @@ def check_preview(config: dict, tags: list[str]):
         isinstance(value, str) for value in config.values()
     ):
         raise ValueError("preview.json must contain only a target and a channel")
+    check_selection(config["target"], config["channel"])
     # Previews of a released series are skipped until main selects the next target.
     if f"v{config['target']}" not in tags:
         next_preview(config["target"], config["channel"], tags)

@@ -169,7 +169,8 @@ must be validated before promotion.
 3. Review and merge the promotion PR, preserving its `Release-As` footer. Configure
    squash merges to use the PR title and description. A newer RC updates the
    existing promotion PR with a merge of that RC, so all of its changes reach
-   the release branch, not only its pins. It also dismisses stale approvals and
+   the release branch, not only its pins. The `.0` changelog then lists the
+   promotion as one entry rather than each commit since the earlier RC. It also dismisses stale approvals and
    requires fresh CI.
    Older RCs and moved candidate tags are rejected. Retries recover a pushed
    branch when PR creation fails; concurrent pushes are not overwritten.
