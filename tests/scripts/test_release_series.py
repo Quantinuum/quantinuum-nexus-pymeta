@@ -295,10 +295,32 @@ def test_preview_requires_an_existing_remote_tag():
     api.repos.list_releases.side_effect = lambda page, per_page: []
     with (
         patch.object(release, "create_client", return_value=api),
+        patch("github_api.time.sleep"),
         pytest.raises(APIError),
     ):
         release.publish_preview("v26.2.0b1", "source-sha")
+    assert api.git.get_ref.call_count == 6
     api.repos.create_release.assert_not_called()
+
+
+def test_preview_waits_for_a_just_pushed_tag_before_creating_its_release():
+    from unittest.mock import Mock
+
+    from ghapi.core import APIError
+
+    api = Mock()
+    api.repos.get_release_by_tag.side_effect = APIError("Not Found", status_code=404)
+    api.repos.list_releases.side_effect = lambda page, per_page: []
+    api.git.get_ref.side_effect = [APIError("Missing tag", status_code=404), {}]
+    with (
+        patch.object(release, "create_client", return_value=api),
+        patch.object(release, "dispatch_release") as dispatch,
+        patch("github_api.time.sleep"),
+    ):
+        release.publish_preview("v26.2.0b1", "source-sha")
+    assert api.git.get_ref.call_count == 2
+    api.repos.create_release.assert_called_once()
+    dispatch.assert_called_once_with(api, "v26.2.0b1")
 
 
 def test_main_maintenance_push_skips_a_target_already_released():

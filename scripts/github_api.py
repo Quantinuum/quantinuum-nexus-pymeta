@@ -2,6 +2,7 @@
 
 import base64
 import os
+import time
 
 from ghapi.core import APIError, GhApi
 from ghapi.page import sync_paged
@@ -25,6 +26,28 @@ def all_items(operation, **parameters):
     """Iterate every item from a paginated list endpoint."""
     for page in sync_paged(operation, per_page=100, **parameters):
         yield from page
+
+
+def wait_for(read, done=lambda result: True, missing=(), attempts=6, delay=1.0):
+    """Repeat a read until GitHub reflects a write made moments earlier.
+
+    GitHub serves some reads from replicas and updates pull request heads in the
+    background, so a fresh release or push may briefly be missing or stale.
+    Statuses in `missing` and results rejected by `done` are retried with
+    exponential backoff (about 30 seconds in total); the last attempt's error or
+    result is returned to the caller.
+    """
+    for attempt in range(attempts):
+        last = attempt == attempts - 1
+        try:
+            result = read()
+        except APIError as error:
+            if error.status_code not in missing or last:
+                raise
+        else:
+            if last or done(result):
+                return result
+        time.sleep(delay * 2**attempt)
 
 
 def get_release(api: GhApi, tag: str) -> dict:

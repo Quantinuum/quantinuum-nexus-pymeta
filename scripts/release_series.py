@@ -11,7 +11,7 @@ from pathlib import Path
 from ghapi.core import APIError
 
 from dispatch_release import dispatch_release
-from github_api import all_items, create_client, get_release, set_draft
+from github_api import all_items, create_client, get_release, set_draft, wait_for
 from release_policy import published_series, release_branch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -210,7 +210,8 @@ def publish_preview(tag: str, source: str):
                 f"{tag} already exists; retry its Validate and publish workflow if necessary"
             )
         return
-    api.git.get_ref(ref=f"tags/{tag}")
+    # Without a visible tag, GitHub would create one at the default branch.
+    wait_for(lambda: api.git.get_ref(ref=f"tags/{tag}"), missing=(404,))
     api.repos.create_release(
         tag_name=tag,
         draft=True,
@@ -419,7 +420,11 @@ def update_promotion(
                 review_id=review["id"],
                 message=f"Candidate updated to {tag}; approval of the new revision is required.",
             )
-    current = api.pulls.get(pull_number=number)
+    # GitHub updates a PR's head in the background after a push.
+    current = wait_for(
+        lambda: api.pulls.get(pull_number=number),
+        done=lambda current: current["head"]["sha"] == head,
+    )
     if (
         current["head"]["sha"] != head
         or not current["draft"]
