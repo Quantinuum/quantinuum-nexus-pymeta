@@ -172,6 +172,13 @@ updates only for packages below 1.0. Major updates and pre-1.0 minor updates are
 reserved for the upcoming series. Not every dependency update produces a new SDK
 release immediately.
 
+[Supporting packages](#supporting-packages) are an exception. A component's
+patch or minor update may require a breaking update of a supporting package: a
+new major version, or a new minor version below 1.0. To deliver such component
+updates within a series, maintainers may include these supporting package
+updates in a reviewed SDK patch release. If your code uses a supporting package
+directly, check the release notes before upgrading within a series.
+
 For the two most recent stable series, patch updates and their SDK patch
 releases merge automatically after CI. Minor updates require human review of
 both the dependency PR and the resulting SDK patch release PR. Older series can
