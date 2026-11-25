@@ -19,6 +19,7 @@ The SDK includes these six packages:
 | Guppy FT | `guppyft` | Write, compile, and run fault-tolerant Guppy programs. |
 | Guppy Algorithms | `guppyalgos` | Work with quantum algorithms in the Guppy toolkit. |
 | Selene | `selene-sim` | Emulate hybrid quantum-classical programs locally. |
+| Tierkreis | `tierkreis` | Run hybrid workflows locally or on HPC. |
 | TKET | `pytket` | Build, transform, and optimize quantum circuits. |
 | Nexus client | `qnexus` | Access the Quantinuum Nexus platform from Python. |
 
