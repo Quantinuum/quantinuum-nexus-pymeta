@@ -33,7 +33,7 @@ jobs:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: '0.13.5'
+          version: '0.13.10'
       - name: Require approval unless the PR is an eligible patch update
         env:
           GH_TOKEN: ${{ github.token }}

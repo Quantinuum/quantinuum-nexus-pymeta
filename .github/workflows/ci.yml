@@ -56,7 +56,7 @@ jobs:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: '0.13.5'
+          version: '0.13.10'
       - name: Keep an unreleased stable version identical to its RC
         if: github.event_name == 'pull_request' && startsWith(github.base_ref, 'release/')
         run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py verify-promotion --unreleased
@@ -113,7 +113,7 @@ jobs:
             ${{ env.NEWEST }}
       - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: '0.13.5'
+          version: '0.13.10'
       - name: Verify lockfile
         if: matrix.os == 'ubuntu-latest'
         run: python scripts/uv_pypi.py lock --check

@@ -6,7 +6,7 @@ project, see the [README](README.md#installation).
 
 ## Local development and validation
 
-Install Python, uv 0.13.5, `just`, and Git, then run:
+Install Python, uv 0.13.10, `just`, and Git, then run:
 
 ```sh
 just setup                 # Install pinned dev tools and activate commit hooks
