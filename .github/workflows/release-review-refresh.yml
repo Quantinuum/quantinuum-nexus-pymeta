@@ -1,0 +1,39 @@
+name: Release review refresh
+
+# A review cannot update a check run from another workflow run, so re-run the
+# PR's existing Release review check instead of reporting a second status.
+on:
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions: {}
+
+concurrency:
+  group: release-review-refresh-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    name: Refresh release review
+    # pull_request_review has no branch filter.
+    if: startsWith(github.event.pull_request.base.ref, 'release/')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Re-run Release review for the PR's current commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run_id=$(gh run list --workflow release-review.yml --event pull_request \
+            --commit "$HEAD_SHA" --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run_id" ]; then
+            echo "::error::No Release review run found for $HEAD_SHA; re-run the check manually."
+            exit 1
+          fi
+          # A run still in progress may have read the reviews before this one.
+          gh run watch "$run_id" --interval 10 > /dev/null || true
+          gh run rerun "$run_id"
+          echo "Re-ran Release review run $run_id."
