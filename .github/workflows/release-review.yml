@@ -4,8 +4,8 @@ on:
   pull_request:
     branches: ['release/*']
     types: [opened, synchronize, reopened, ready_for_review, edited]
-  pull_request_review:
-    types: [submitted, edited, dismissed]
+  # Reviews re-run this check through release-review-refresh.yml, so the PR
+  # keeps a single Release review status.
 
 permissions:
   contents: read
@@ -17,8 +17,6 @@ concurrency:
 jobs:
   review:
     name: Release review
-    # pull_request_review has no branch filter.
-    if: startsWith(github.event.pull_request.base.ref, 'release/')
     runs-on: ubuntu-latest
     permissions:
       contents: read
