@@ -164,9 +164,11 @@ merge-queue, dispatched, and release-validation runs are never cancelled.
    require the **Release review** status check
    (`.github/workflows/release-review.yml`). It enforces maintainer approval for
    everything except eligible patch updates; see
-   [Merge queue](MAINTAINING.md#merge-queue). Add this check only once every supported
-   release branch contains the workflow, because PRs into a branch without it
-   would never receive the status. Additional human/code-owner review
+   [Merge queue](MAINTAINING.md#merge-queue). Reviews re-run that check through
+   `.github/workflows/release-review-refresh.yml`, which needs `actions: write`.
+   Add this check only once every supported
+   release branch contains both workflows, because PRs into a branch without them
+   would not receive or refresh the status. Additional human/code-owner review
    requirements prevent unattended merges until those reviews arrive. The bot
    does not bypass required checks. Limit release-branch creation to maintainers
    and the release bot if repository rules allow it.
