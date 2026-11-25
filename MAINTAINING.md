@@ -102,7 +102,9 @@ passes for Renovate PRs that only apply patch upgrades to existing runtime pins,
 and for release PRs that the **Release Please** workflow would merge
 automatically. Any other PR needs an approval of its current commit from a
 maintainer with write access other than its author, and no outstanding change
-requests.
+requests. Submitting, editing, or dismissing a review re-runs the PR's existing
+check through the **Release review refresh** workflow, so the status updates in
+place. Reviews on PRs from forks cannot re-run it; re-run the check manually.
 
 Installation tests do not establish behavioral compatibility; maintainers must
 assess that separately.
