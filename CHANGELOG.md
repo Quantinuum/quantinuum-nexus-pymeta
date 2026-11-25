@@ -1,5 +1,12 @@
 # Changelog
 
+## [26.1.1](https://github.com/Quantinuum/quantinuum-nexus-pymeta/compare/v26.1.0...v26.1.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **deps:** update Quantinuum packages with required supporting majors ([#42](https://github.com/Quantinuum/quantinuum-nexus-pymeta/issues/42)) ([e030f0f](https://github.com/Quantinuum/quantinuum-nexus-pymeta/commit/e030f0f97cf6d8aa76fcb622e9a881434955aebf))
+
 ## 26.1.0 (2026-11-24)
 
 
