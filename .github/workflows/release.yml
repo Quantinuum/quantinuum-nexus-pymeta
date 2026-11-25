@@ -28,7 +28,7 @@ jobs:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: '0.13.5'
+          version: '0.13.10'
       - name: Check out the release branch
         uses: actions/checkout@v7
         with:
@@ -87,7 +87,7 @@ jobs:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: '0.13.5'
+          version: '0.13.10'
       - name: Queue an eligible patch release PR
         env:
           GH_TOKEN: ${{ secrets.HUGRBOT_PAT }}
@@ -111,7 +111,7 @@ jobs:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: '0.13.5'
+          version: '0.13.10'
       - name: Validate the draft release
         env:
           GH_TOKEN: ${{ secrets.HUGRBOT_PAT }}
