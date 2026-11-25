@@ -32,7 +32,7 @@ jobs:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: '0.13.5'
+          version: '0.13.10'
       - name: Verify the release
         id: release
         env:
@@ -73,7 +73,7 @@ jobs:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: '0.13.5'
+          version: '0.13.10'
       - name: Verify version and build
         env:
           TAG: ${{ inputs.tag }}
@@ -132,7 +132,7 @@ jobs:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: '0.13.5'
+          version: '0.13.10'
       - name: Download the verified build distributions
         uses: actions/download-artifact@v8
         with:
