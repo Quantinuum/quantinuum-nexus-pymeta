@@ -10,14 +10,14 @@ readme = "README.md"
 requires-python = ">=3.12,<3.15"
 dependencies = [
     # SDK components
-    "guppylang==1.1.5",
+    "guppylang==1.2.3",
     "guppyft==0.4.0",
     "guppyalgos==0.2.0",
     "selene-sim==0.3.8",
     "pytket==2.18.5",
     "qnexus==0.51.4",
     # Supporting Quantinuum packages required by the components
-    "guppylang-internals==1.1.5",
+    "guppylang-internals==1.2.3",
     "hugr==0.18.8",
     "quantinuum-schemas==8.1.1",
     "qwasm==1.0.1",
