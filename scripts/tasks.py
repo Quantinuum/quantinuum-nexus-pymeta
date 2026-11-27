@@ -9,6 +9,7 @@ from python_matrix import supported_versions
 from uv_pypi import run_uv
 
 ROOT = Path(__file__).resolve().parents[1]
+TEST_KINDS = ["scripts", "package", "integration"]
 
 
 def tool_requirement(name: str) -> str:
@@ -32,15 +33,20 @@ def run_tests(kind: str, versions: list[str]):
         )
     for selected in selected_versions:
         print(f"Running {kind} tests on Python {selected}", flush=True)
+        if kind == "integration":
+            # Integration tests import the SDK, so they run in a fresh environment
+            # with the locked runtime dependencies and the dev group's pytest.
+            environment = ["--locked"]
+        else:
+            environment = ["--no-project", "--with", tool_requirement("pytest")]
+            if kind == "scripts":
+                environment += ["--with", tool_requirement("ghapi")]
         run_uv(
             "run",
-            "--no-project",
             "--isolated",
             "--python",
             selected,
-            "--with",
-            tool_requirement("pytest"),
-            *(["--with", tool_requirement("ghapi")] if kind == "scripts" else []),
+            *environment,
             "python",
             "-m",
             "pytest",
@@ -52,13 +58,15 @@ def run_tests(kind: str, versions: list[str]):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for kind in ["scripts", "package"]:
+    for kind in TEST_KINDS:
         commands.add_parser(kind).add_argument("versions", nargs="*", default=["all"])
     commands.add_parser("hooks-install")
     commands.add_parser("hooks").add_argument("arguments", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     os.chdir(ROOT)
-    if args.command in ["scripts", "package"]:
+    if args.command in TEST_KINDS:
+        if args.command == "integration":
+            os.environ.pop("VIRTUAL_ENV", None)
         run_tests(args.command, args.versions)
     elif args.command == "hooks-install":
         os.environ.pop("VIRTUAL_ENV", None)

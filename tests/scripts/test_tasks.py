@@ -48,6 +48,18 @@ def test_test_commands_use_each_supported_interpreter_and_pinned_pytest(
     assert all(("ghapi==2.1.5" in call) == (kind == "scripts") for call in calls)
 
 
+def test_integration_tests_run_in_fresh_locked_sdk_environments(monkeypatch):
+    run = Mock()
+    monkeypatch.setattr(tasks, "supported_versions", lambda: ["3.12", "3.13", "3.14"])
+    monkeypatch.setattr(tasks, "run_uv", run)
+    tasks.run_tests("integration", ["3.12", "3.14"])
+    calls = [call.args for call in run.call_args_list]
+    assert [call[call.index("--python") + 1] for call in calls] == ["3.12", "3.14"]
+    assert all("--isolated" in call and "--locked" in call for call in calls)
+    assert all("--no-project" not in call and "--with" not in call for call in calls)
+    assert all(call[-1] == "tests/integration" for call in calls)
+
+
 def test_unsupported_python_version_fails_before_running_tests(monkeypatch):
     run = Mock()
     monkeypatch.setattr(tasks, "supported_versions", lambda: ["3.12", "3.13", "3.14"])

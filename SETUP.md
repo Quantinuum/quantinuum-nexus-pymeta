@@ -14,7 +14,9 @@ just test                  # Lockfile and script tests on 3.12/3.13/3.14
 just test-scripts 3.13      # Script tests on one supported Python version
 just test-package          # Fresh wheel and source installs on 3.12/3.13/3.14
 just test-package 3.12      # Package tests on one Python version
-just test-all              # All tests, including the installation matrix
+just test-integration      # SDK component integration tests on 3.12/3.13/3.14
+just test-integration 3.12  # Integration tests on one Python version
+just test-all              # All tests, including installation and integration
 just hooks                 # Run the pre-commit checks over all tracked files
 ```
 
@@ -24,14 +26,23 @@ enumerated without a network request; an unbounded range uses GitHub's stable
 Python version manifest. uv downloads missing interpreters when needed.
 
 Python tests use pytest, with exact pytest and pre-commit versions pinned in the
-`dev` dependency group. The runner isolates pytest from the runtime dependencies
-and runs each Python minor sequentially. Tests are separated by what they check:
+`dev` dependency group. The runner isolates pytest from the runtime dependencies,
+except for integration tests, and runs each Python minor sequentially. Tests are
+separated by what they check:
 
 - `tests/scripts/` checks repository tooling, including release and merge policies.
 - `tests/package/` checks the metapackage itself, currently wheel and source installation.
+- `tests/integration/` checks that the SDK components work together offline:
+  Guppy programs on the Selene emulator, pytket circuits and tket passes on Guppy
+  HUGR, lowering to QIR with hugr-qir, guppyft and guppyalgos, Tierkreis workflows,
+  and qnexus job inputs. It also runs the components' README examples; examples
+  that fail with the pinned versions are strict `xfail`s explained in
+  [`tests/integration/REPORT.md`](tests/integration/REPORT.md).
 
 An ordinary `pytest` run selects `tests/scripts/`. Use `pytest tests/package` to
-select package tests or `pytest tests` to run both suites on the current Python.
+select package tests. Integration tests import the SDK, so they run in a fresh
+environment from `uv.lock` (`uv run --locked --isolated`); in the project
+`.venv`, `python -m pytest tests/integration` also works.
 The `just` commands run the selected suite across supported Python versions.
 
 `just setup` installs a Git pre-commit hook in this checkout. The hooks run
@@ -53,7 +64,8 @@ Commits that change `pyproject.toml`, `uv.lock`, or `README.md` also run the
 **Quantinuum pins** check (`just check-pins`), which needs network access to PyPI.
 Run script tests explicitly with `just test-scripts 3.12` during development;
 `just test-scripts` runs the suite on every supported Python minor. Distribution
-installation tests run in CI and through `just test-package` or `just test-all`.
+installation and integration tests run in CI and through `just test-package`,
+`just test-integration`, or `just test-all`.
 
 Hooks must be installed once per clone. The pre-commit executable lives in the
 persistent project `.venv`; run `just setup` again after recreating it. The test
@@ -106,10 +118,13 @@ range, one after the other in a single job per platform: `ubuntu-latest`,
 `windows-latest`, `macos-latest` (Apple Silicon), and `macos-26-intel` (the latest
 standard Intel macOS image). Intel macOS tests Python 3.13 as its newest version,
 because Python 3.14 is not supported there. The explicit Intel label needs
-updating when GitHub introduces a newer image. CI uses the same pytest runner as
-the just recipes; `just test-package` covers every supported version locally.
+updating when GitHub introduces a newer image. The same jobs then run the SDK
+integration tests on both versions. CI uses the same pytest runner as the just
+recipes; `just test-package` and `just test-integration` cover every supported
+version locally.
 The required **Installation checks** status covers the script tests, the RC
-dependency freeze, the Quantinuum pin check, and the installation matrix. A new
+dependency freeze, the Quantinuum pin check, and the installation and
+integration matrix. A new
 push to a pull request cancels CI still running for its previous commit;
 merge-queue, dispatched, and release-validation runs are never cancelled.
 
