@@ -27,7 +27,7 @@ dependencies = [
     "tket==0.15.16",
     "tket-eccs==0.6.0",
     "tket-exts==0.14.3",
-    "zixy==0.4.4",
+    "zixy==0.4.5",
 ]
 
 [dependency-groups]
