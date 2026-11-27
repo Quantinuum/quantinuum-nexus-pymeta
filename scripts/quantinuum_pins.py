@@ -5,8 +5,8 @@ version links to github.com/Quantinuum or github.com/CQCL, or an author or
 maintainer uses a quantinuum.com address.
 
 The README's "Included tools" section must also name exactly the pinned packages,
-and every locked package must come from PyPI, so that a package from another
-index with the same name cannot enter the lockfile.
+and every locked package and file must come from PyPI, so that a package from
+another index with the same name cannot enter the lockfile.
 """
 
 import json
@@ -21,6 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PYPI = "https://pypi.org/simple"
+PYPI_FILES = "https://files.pythonhosted.org/"
 ORGANISATIONS = re.compile(r"github\.com/(quantinuum|cqcl)(/|$)", re.IGNORECASE)
 EMAIL = re.compile(r"@quantinuum\.com\b", re.IGNORECASE)
 README_SECTION = "## Included tools"
@@ -63,17 +64,23 @@ def runtime_packages(lock: dict, project: str) -> set[tuple[str, str]]:
     return {(name, version) for name, version in found if name != project}
 
 
-def non_pypi_packages(lock: dict, project: str) -> list[tuple[str, str, dict]]:
-    """Return every locked package, except the project itself, not from PyPI."""
-    return sorted(
-        (
-            (package["name"], package["version"], package.get("source", {}))
-            for package in lock["package"]
-            if package["name"] != project
-            and package.get("source") != {"registry": PYPI}
-        ),
-        key=lambda package: package[:2],
-    )
+def non_pypi_packages(lock: dict, project: str) -> list[tuple[str, str, str]]:
+    """Return each locked source or file, except the project's, not from PyPI."""
+    found = []
+    for package in lock["package"]:
+        if package["name"] == project:
+            continue
+        name, version = package["name"], package["version"]
+        source = package.get("source", {})
+        if source != {"registry": PYPI}:
+            found.append((name, version, f"source {source}"))
+        files = [*package.get("wheels", []), *filter(None, [package.get("sdist")])]
+        found += [
+            (name, version, f"file {file.get('url')}")
+            for file in files
+            if not str(file.get("url")).startswith(PYPI_FILES)
+        ]
+    return sorted(found)
 
 
 def pinned(dependencies: list[str]) -> set[str]:
@@ -152,10 +159,10 @@ if __name__ == "__main__":
     lock = tomllib.loads((ROOT / "uv.lock").read_text())
     readme = (ROOT / "README.md").read_text()
     foreign = non_pypi_packages(lock, project["name"])
-    for name, version, source in foreign:
+    for name, version, origin in foreign:
         print(
-            f"::error file=uv.lock::{name} {version} is locked from {source}, "
-            f"not {PYPI}; run `just lock` to resolve it from PyPI"
+            f"::error file=uv.lock::{name} {version} is locked with {origin}, "
+            f"not from {PYPI}; run `just lock` to resolve it from PyPI"
         )
     unlisted, unexpected = readme_mismatches(project, readme)
     for name in unlisted:

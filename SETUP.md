@@ -86,7 +86,8 @@ take its place. This is enforced without changing your global settings:
   project's build backend and other build dependencies are not locked, so the
   commit hooks use `--only-group dev --no-build` to install only locked wheels.
   `just check-pins` and the **Quantinuum pins** CI check fail if any locked
-  package comes from somewhere other than PyPI. In CI, where no other index is
+  package or file comes from somewhere other than PyPI. The commit hooks run
+  this check first and stop before installing anything if it fails. In CI, where no other index is
   configured, `uv lock --check` rejects such a lockfile too.
 - The `just` recipes set `UV_CONFIG_FILE` to `uv.toml`, which replaces user- and
   system-level uv configuration, and remove index overrides such as `UV_INDEX`

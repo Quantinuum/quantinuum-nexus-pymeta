@@ -8,6 +8,15 @@ default_install_hook_types: [pre-commit]
 repos:
   - repo: local
     hooks:
+      # Runs first, without installing anything, and stops the remaining hooks if
+      # uv.lock refers to anything outside PyPI.
+      - id: quantinuum-pins
+        name: Verify Quantinuum pins
+        entry: just check-pins
+        language: system
+        pass_filenames: false
+        files: '^(pyproject\.toml|uv\.lock|README\.md|scripts/quantinuum_pins\.py)$'
+        fail_fast: true
       - id: ruff-check
         name: Ruff linter
         entry: uv run --frozen --only-group dev --no-build --python 3.12 ruff check --force-exclude --fix
@@ -41,9 +50,3 @@ repos:
         language: system
         pass_filenames: false
         files: '^(pyproject\.toml|uv\.lock|uv\.toml|justfile|\.pre-commit-config\.yaml)$'
-      - id: quantinuum-pins
-        name: Verify Quantinuum pins
-        entry: just check-pins
-        language: system
-        pass_filenames: false
-        files: '^(pyproject\.toml|uv\.lock|README\.md|scripts/quantinuum_pins\.py)$'
