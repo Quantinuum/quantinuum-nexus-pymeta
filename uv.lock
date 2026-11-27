@@ -218,7 +218,7 @@ wheels = [
 
 [[package]]
 name = "guppyft"
-version = "0.7.0"
+version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "guppylang" },
@@ -230,11 +230,11 @@ dependencies = [
     { name = "zixy" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/68/34b1f3b4d696e4bc10f29aebc2f1f8f3e15aec9140322e603a66422e2918/guppyft-0.7.0-cp310-abi3-macosx_10_9_x86_64.whl", hash = "sha256:0a24c05fa1810590772b0a74beda7b2441de5f92f55277d12d7b503c26cd202c", size = 3267837, upload-time = "2026-11-23T17:59:34.792Z" },
-    { url = "https://files.pythonhosted.org/packages/69/a2/06b54cf7cdea54e829b299ae990966761a5e114ecbffc601a9b9c63c1085/guppyft-0.7.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:245ea11a9f9d9b71b915d75131d465365f8d1ac097a480731c879d78cac84410", size = 2969089, upload-time = "2026-11-23T17:59:36.661Z" },
-    { url = "https://files.pythonhosted.org/packages/02/76/66178294787c6b69a37f4a5f6d2a30720d6e9e944cc51a878587aed4020a/guppyft-0.7.0-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:29a225cd0dd9a098eef722474d9696698ac9bdd8b3d04b5d77ddfde5ab281660", size = 3351714, upload-time = "2026-11-23T17:59:38.456Z" },
-    { url = "https://files.pythonhosted.org/packages/6f/68/b282ae8d4351dcb40ab6393ec376ac7b0525cd81ed9e9fa2e4ca6148b8a8/guppyft-0.7.0-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:f1dd2dbc3cf250995933e61e96ee746db42341f86463da1baef6ae97e71531e2", size = 3541194, upload-time = "2026-11-23T17:59:40.203Z" },
-    { url = "https://files.pythonhosted.org/packages/59/df/f79843507aa96e8b21443587b38e0643149962c8b24f904ee38c857ee864/guppyft-0.7.0-cp310-abi3-win_amd64.whl", hash = "sha256:00f23d243d7f05260e55495d6697ae1e2e873ac8e1310b9bf42e2aceac468d1c", size = 3121921, upload-time = "2026-11-23T17:59:41.732Z" },
+    { url = "https://files.pythonhosted.org/packages/fa/a0/c1bad83899cf970921036d1fa87cc56a8bfdc6a7a409c1d9d431b24f62e5/guppyft-0.7.1-cp310-abi3-macosx_10_9_x86_64.whl", hash = "sha256:36cee1fc9bcbd88c1979bafe446a97a63d3a0050cf07205e3d65252ce5a90bec", size = 3271819, upload-time = "2026-11-27T16:45:00.201Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/32/9fd83f14bebd2c8bbe0b525c1f8bac4531854b2a0198b9836fb38787d3af/guppyft-0.7.1-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:ff39723d9e290b137b97b960534f06fc765ea117cd187e742751d6080c7ed50f", size = 2971781, upload-time = "2026-11-27T16:45:01.928Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/8b/f27598eaa48e08bebf6ed30912b47aa9211e61bf58188aa5f8fd9ba43020/guppyft-0.7.1-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:02f53686325321c0551184c8faf20b00b7bd6053be41b33ffd90fc66a81c8f86", size = 3352857, upload-time = "2026-11-27T16:45:03.868Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/04/39ceaee91de7c9cbb2e1f99aedc1a1e37d6fc56c40eedee55a6b4c0c86e4/guppyft-0.7.1-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:f8b5e488c637ba4e9802c29d2dacd801c613ed18a4f15db4c0db861ebc580fa2", size = 3544587, upload-time = "2026-11-27T16:45:05.889Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/5a/68b7999c1158a821afd1e1419a46e5fd2fff44040fed7dea2be14ee4ab7a/guppyft-0.7.1-cp310-abi3-win_amd64.whl", hash = "sha256:b74397539061ab72d122651021cb4c25a89446b5b2a86060d19582388bac5a94", size = 3129715, upload-time = "2026-11-27T16:45:07.897Z" },
 ]
 
 [[package]]
@@ -1396,7 +1396,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "guppyalgos", specifier = "==0.2.0" },
-    { name = "guppyft", specifier = "==0.7.0" },
+    { name = "guppyft", specifier = "==0.7.1" },
     { name = "guppylang", specifier = "==1.2.3" },
     { name = "guppylang-internals", specifier = "==1.2.3" },
     { name = "hugr", specifier = "==0.18.8" },
