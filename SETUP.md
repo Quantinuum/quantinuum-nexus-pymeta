@@ -100,7 +100,8 @@ take its place. This is enforced without changing your global settings:
 Update the lockfile with `just lock` rather than bare `uv lock`. For other
 commands that resolve packages, pass `--config-file uv.toml` and unset
 `UV_INDEX`, `UV_DEFAULT_INDEX`, `UV_INDEX_URL`, `UV_EXTRA_INDEX_URL`,
-`UV_FIND_LINKS`, `UV_INDEX_STRATEGY`, and `UV_NO_CONFIG` if they are set. For
+`UV_FIND_LINKS`, `UV_INDEX_STRATEGY`, `UV_NO_CONFIG`, and `UV_ENV_FILE` if they
+are set. For
 example, install from this checkout with:
 
 ```sh

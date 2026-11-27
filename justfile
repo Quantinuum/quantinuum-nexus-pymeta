@@ -1,8 +1,10 @@
 set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 
 # Resolve packages only from PyPI: use uv.toml in place of user- and system-level
-# configuration, and ignore index overrides from the environment.
+# configuration, and ignore index overrides from the environment or a uv dotenv
+# file.
 export UV_CONFIG_FILE := justfile_directory() / "uv.toml"
+unexport UV_ENV_FILE
 unexport UV_NO_CONFIG
 unexport UV_INDEX
 unexport UV_DEFAULT_INDEX
