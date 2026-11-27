@@ -1,5 +1,7 @@
 # SDK integration test report
 
+Date: 2026-11-27
+
 Findings from writing `tests/integration/` against the pinned SDK components
 in `pyproject.toml` (quantinuum-nexus 26.1.0). Each failure below is a documented
 example or a combination of components that should work but does not with the
@@ -14,7 +16,9 @@ newly pinned README is picked up without editing the tests.
 
 - Components: selene-sim 0.3.8 README, guppylang 1.2.3
 - Test: `test_selene_readme_program`
-- Upstream: Quantinuum/selene#282
+- Status: open upstream issue
+  [Quantinuum/selene#282](https://github.com/Quantinuum/selene/issues/282); the
+  README on selene `main` still has this example.
 - The README's GHZ program reports `result("measurements", measure_array(qubits))`.
   Since guppylang 1.x, `measure_array` returns lazy `Measurement` values, which
   `result`/`output` do not accept:
@@ -33,8 +37,9 @@ newly pinned README is picked up without editing the tests.
 
 - Components: selene-sim 0.3.8
 - Test: `test_selene_readme_multi_shot`
-- Upstream: already removed from the README on selene `main`; fixed in the next
-  release (see Quantinuum/selene#282)
+- Status: fixed on selene `main`, which no longer has this example; awaiting a
+  selene-sim release after 0.3.8. Mentioned in
+  [Quantinuum/selene#282](https://github.com/Quantinuum/selene/issues/282).
 - The README's multi-shot example calls `runner.run(simulator=..., n_qubits=10,
   n_shots=100, n_processes=8)` and wraps it in `QsysShot`, while its comment says
   `run_shots` should be used:
@@ -50,8 +55,9 @@ newly pinned README is picked up without editing the tests.
 
 - Components: guppyft 0.7.0
 - Test: `test_guppyft_readme`
-- Upstream: fixed on guppyft `main` by Quantinuum/guppyft#578; fixed in the next
-  release
+- Status: fixed on guppyft `main` by
+  [Quantinuum/guppyft#578](https://github.com/Quantinuum/guppyft/pull/578);
+  awaiting a guppyft release after 0.7.0, so no issue was opened.
 - `SteaneBuilder.build()` takes no arguments:
 
   ```text
@@ -66,7 +72,8 @@ newly pinned README is picked up without editing the tests.
 
 - Components: guppyft 0.7.0, hugr-qir 0.4.0
 - Test: `test_guppyft.py::test_steane_encoded_program_lowers_to_qir`
-- Upstream: Quantinuum/hugr-qir#451
+- Status: open upstream issue
+  [Quantinuum/hugr-qir#451](https://github.com/Quantinuum/hugr-qir/issues/451).
 - A Steane-encoded teleportation program emulates correctly on Selene, but
   `hugr_to_qir` on the same encoded package fails, and asks for a bug report:
 

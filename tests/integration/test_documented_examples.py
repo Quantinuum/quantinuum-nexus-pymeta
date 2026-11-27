@@ -3,7 +3,8 @@
 README examples are read from the installed packages' metadata, so they track
 the pinned versions. Examples that fail are marked ``xfail(strict=True)``, so a
 fix in a newly pinned README or package shows up as XPASS. See
-``tests/integration/REPORT.md`` for details of each failure.
+``tests/integration/reports/2026-11-27-sdk-integration.md``
+for details of each failure.
 """
 
 import re
@@ -80,7 +81,10 @@ def test_guppylang_readme(run_example):
 @pytest.mark.xfail(
     strict=True,
     raises=GuppyError,
-    reason="REPORT.md#1: selene-sim README passes Measurement values to result()",
+    reason=(
+        "reports/2026-11-27-sdk-integration.md#1: "
+        "selene-sim README passes Measurement values to result()"
+    ),
 )
 def test_selene_readme_program(run_example):
     program, *_ = selene_examples()
@@ -97,7 +101,10 @@ def test_selene_readme_build_and_single_shots(run_example):
 @pytest.mark.xfail(
     strict=True,
     raises=TypeError,
-    reason="REPORT.md#2: selene-sim README passes n_shots to SeleneInstance.run()",
+    reason=(
+        "reports/2026-11-27-sdk-integration.md#2: "
+        "selene-sim README passes n_shots to SeleneInstance.run()"
+    ),
 )
 def test_selene_readme_multi_shot(run_example):
     _, program, build, shots, *_ = selene_examples()
@@ -116,7 +123,10 @@ def test_selene_readme_noise_and_runtime(run_example):
 @pytest.mark.xfail(
     strict=True,
     raises=TypeError,
-    reason="REPORT.md#3: guppyft README calls SteaneBuilder().build(n_blocks=3)",
+    reason=(
+        "reports/2026-11-27-sdk-integration.md#3: "
+        "guppyft README calls SteaneBuilder().build(n_blocks=3)"
+    ),
 )
 def test_guppyft_readme(run_example):
     [example] = readme_examples("guppyft")

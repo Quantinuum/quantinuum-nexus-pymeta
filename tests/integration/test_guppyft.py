@@ -46,7 +46,10 @@ def test_steane_encoded_teleportation_emulates_logically(build_emulator):
 @pytest.mark.xfail(
     strict=True,
     raises=ValueError,
-    reason="REPORT.md#4: hugr-qir fails to emit LLVM for guppyft-encoded programs",
+    reason=(
+        "reports/2026-11-27-sdk-integration.md#4: "
+        "hugr-qir fails to emit LLVM for guppyft-encoded programs"
+    ),
 )
 def test_steane_encoded_program_lowers_to_qir():
     steane = SteaneBuilder.new(n_blocks=3).build()

@@ -38,7 +38,7 @@ separated by what they check:
   and qnexus uploads against a mocked Nexus. It also runs the README examples
   from the installed packages' metadata; examples and component combinations
   that fail with the pinned versions are strict `xfail`s explained in
-  [`tests/integration/REPORT.md`](tests/integration/REPORT.md).
+  [`tests/integration/reports/2026-11-27-sdk-integration.md`](tests/integration/reports/2026-11-27-sdk-integration.md).
 
 An ordinary `pytest` run selects `tests/scripts/`. Use `pytest tests/package` to
 select package tests. Integration tests import the SDK, so they run in a fresh
