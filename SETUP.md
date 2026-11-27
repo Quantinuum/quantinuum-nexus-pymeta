@@ -6,6 +6,10 @@ project, see the [README](README.md#installation).
 
 ## Local development and validation
 
+CI uses uv 0.13.10. `uv.toml` requires uv 0.12.22 or later, the first version
+that writes `uv.lock` in its current format, so older versions fail before
+running.
+
 Install Python, uv 0.13.10, `just`, and Git, then run:
 
 ```sh
