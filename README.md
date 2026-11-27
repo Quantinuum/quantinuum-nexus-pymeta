@@ -11,7 +11,7 @@ APIs, and documentation.
 
 ## Included tools
 
-The SDK includes these six packages:
+The SDK includes these tools:
 
 | Tool | Python package | Purpose |
 | --- | --- | --- |
@@ -22,6 +22,7 @@ The SDK includes these six packages:
 | Tierkreis | `tierkreis` | Run hybrid workflows locally or on HPC. |
 | TKET | `pytket` | Build, transform, and optimize quantum circuits. |
 | Nexus client | `qnexus` | Access the Quantinuum Nexus platform from Python. |
+| HUGR QIR | `hugr-qir` | Compile Guppy/HUGR programs to QIR targeting System Model H2. |
 
 ### Supporting packages
 
@@ -31,6 +32,7 @@ version of all Quantinuum code. You rarely need to use them directly:
 
 - `guppylang-internals`
 - `hugr`
+- `quantinuum-qircheck`
 - `quantinuum-schemas`
 - `qwasm`
 - `selene-core`
