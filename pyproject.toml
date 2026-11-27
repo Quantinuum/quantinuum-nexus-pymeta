@@ -39,6 +39,9 @@ dev = [
     {include-group = "automation"},
     "pytest==9.2.0",
     "pre-commit==4.7.0",
+    # Commit hook tools, run from the locked environment.
+    "pre-commit-hooks==6.0.0",
+    "ruff==0.17.4",
 ]
 
 [tool.pytest.ini_options]

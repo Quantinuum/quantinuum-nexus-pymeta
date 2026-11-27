@@ -108,3 +108,27 @@ def test_readme_must_list_exactly_the_pinned_packages():
         ["qwasm"],
         ["hugr"],
     )
+
+
+def test_reports_locked_packages_not_from_pypi():
+    pypi = {"registry": "https://pypi.org/simple"}
+    lock = {
+        "package": [
+            {
+                "name": "quantinuum-nexus",
+                "version": "26.2.0",
+                "source": {"editable": "."},
+            },
+            {"name": "numpy", "version": "2.5.4", "source": pypi},
+            {
+                "name": "hugr",
+                "version": "99.0.0",
+                "source": {"registry": "https://private.example/simple"},
+            },
+            {"name": "tket", "version": "0.15.16", "source": {"git": "https://x/tket"}},
+        ]
+    }
+    assert quantinuum_pins.non_pypi_packages(lock, "quantinuum-nexus") == [
+        ("hugr", "99.0.0", {"registry": "https://private.example/simple"}),
+        ("tket", "0.15.16", {"git": "https://x/tket"}),
+    ]

@@ -59,17 +59,17 @@ jobs:
           version: '0.13.10'
       - name: Keep an unreleased stable version identical to its RC
         if: github.event_name == 'pull_request' && startsWith(github.base_ref, 'release/')
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py verify-promotion --unreleased
+        run: uv run --locked --only-group automation python scripts/release_series.py verify-promotion --unreleased
       - name: Hold Renovate dependency updates to main during the RC freeze
         if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/dependency_freeze.py
+        run: uv run --locked --only-group automation python scripts/dependency_freeze.py
       - name: Check the preview selection
         if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py check-preview
+        run: uv run --locked --only-group automation python scripts/release_series.py check-preview
 
   quantinuum-pins:
     name: Quantinuum pins
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: Require exact, documented pins for Quantinuum packages in uv.lock
+      - name: Require PyPI sources and exact, documented Quantinuum pins in uv.lock
         run: python scripts/quantinuum_pins.py
 
   install:
@@ -116,7 +116,7 @@ jobs:
           version: '0.13.10'
       - name: Verify lockfile
         if: matrix.os == 'ubuntu-latest'
-        run: python scripts/uv_pypi.py lock --check
+        run: uv lock --check
       - name: Test repository scripts
         if: matrix.os == 'ubuntu-latest'
         run: python scripts/tasks.py scripts 3.12

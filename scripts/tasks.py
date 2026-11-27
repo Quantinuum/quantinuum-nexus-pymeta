@@ -2,23 +2,19 @@
 
 import argparse
 import os
-import tomllib
+import subprocess
 from pathlib import Path
 
 from python_matrix import supported_versions
-from uv_pypi import run_uv
 
 ROOT = Path(__file__).resolve().parents[1]
+# Keep in sync with the hook entries in .pre-commit-config.yaml. Installing only
+# the dev group avoids building the project, whose build backend is not locked.
+HOOK_RUN = ("run", "--locked", "--only-group", "dev", "--python", "3.12")
 
 
-def tool_requirement(name: str) -> str:
-    config = tomllib.loads((ROOT / "pyproject.toml").read_text())
-    return next(
-        requirement
-        for group in config["dependency-groups"].values()
-        for requirement in group
-        if isinstance(requirement, str) and requirement.startswith(name + "==")
-    )
+def run_uv(*arguments: str) -> None:
+    subprocess.run(["uv", *arguments], check=True)
 
 
 def run_tests(kind: str, versions: list[str]):
@@ -32,15 +28,15 @@ def run_tests(kind: str, versions: list[str]):
         )
     for selected in selected_versions:
         print(f"Running {kind} tests on Python {selected}", flush=True)
+        # The locked dev group provides pytest without the runtime dependencies.
         run_uv(
             "run",
-            "--no-project",
             "--isolated",
+            "--locked",
+            "--only-group",
+            "dev",
             "--python",
             selected,
-            "--with",
-            tool_requirement("pytest"),
-            *(["--with", tool_requirement("ghapi")] if kind == "scripts" else []),
             "python",
             "-m",
             "pytest",
@@ -62,18 +58,10 @@ if __name__ == "__main__":
         run_tests(args.command, args.versions)
     elif args.command == "hooks-install":
         os.environ.pop("VIRTUAL_ENV", None)
-        run_uv("run", "--locked", "--python", "3.12", "pre-commit", "install")
+        run_uv(*HOOK_RUN, "pre-commit", "install")
     else:
         os.environ.pop("VIRTUAL_ENV", None)
         arguments = (
             args.arguments[1:] if args.arguments[:1] == ["--"] else args.arguments
         )
-        run_uv(
-            "run",
-            "--locked",
-            "--python",
-            "3.12",
-            "pre-commit",
-            "run",
-            *(arguments or ["--all-files"]),
-        )
+        run_uv(*HOOK_RUN, "pre-commit", "run", *(arguments or ["--all-files"]))

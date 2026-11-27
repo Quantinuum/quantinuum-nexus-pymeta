@@ -30,9 +30,10 @@ The **Quantinuum pins** CI check (`scripts/quantinuum_pins.py`) enforces this.
 It looks up each runtime package in `uv.lock` on PyPI and fails when a
 package linking to github.com/Quantinuum or github.com/CQCL, or maintained
 from a quantinuum.com address, is not pinned. It also fails when the README's
-"Included tools" section does not list exactly the pinned packages. To add a
+"Included tools" section does not list exactly the pinned packages, or when
+any package in `uv.lock` comes from an index other than PyPI. To add a
 component, pin it and any new Quantinuum packages it pulls in, list them in the
-README, then run `uv lock`. When a Renovate update introduces a new Quantinuum
+README, then run `just lock`. When a Renovate update introduces a new Quantinuum
 dependency, push the missing pin and README entry to the Renovate branch.
 
 ### Dependency updates with Renovate

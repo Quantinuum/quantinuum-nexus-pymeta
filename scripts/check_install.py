@@ -8,8 +8,6 @@ import tempfile
 import tomllib
 from pathlib import Path
 
-from uv_pypi import run_uv
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -32,10 +30,7 @@ def check_installed() -> None:
 
 
 def run(*command: str) -> None:
-    if command[0] == "uv":
-        run_uv(*command[1:])
-    else:
-        subprocess.run(command, cwd=ROOT, check=True)
+    subprocess.run(command, cwd=ROOT, check=True)
 
 
 def check_distributions() -> None:

@@ -24,16 +24,11 @@ def test_bounded_python_matrix_does_not_need_network(specifier, expected, monkey
 
 
 @pytest.mark.parametrize("kind", ["scripts", "package"])
-def test_test_commands_use_each_supported_interpreter_and_pinned_pytest(
+def test_test_commands_use_each_supported_interpreter_and_the_locked_dev_group(
     kind, monkeypatch
 ):
     run = Mock()
     monkeypatch.setattr(tasks, "supported_versions", lambda: ["3.12", "3.13", "3.14"])
-    monkeypatch.setattr(
-        tasks,
-        "tool_requirement",
-        lambda name: {"pytest": "pytest==9.2.0", "ghapi": "ghapi==2.1.5"}[name],
-    )
     monkeypatch.setattr(tasks, "run_uv", run)
     tasks.run_tests(kind, ["all"])
     calls = [call.args for call in run.call_args_list]
@@ -42,10 +37,10 @@ def test_test_commands_use_each_supported_interpreter_and_pinned_pytest(
         "3.13",
         "3.14",
     ]
-    assert all("--isolated" in call and "--no-project" in call for call in calls)
-    assert all(call[call.index("--with") + 1] == "pytest==9.2.0" for call in calls)
+    assert all("--isolated" in call and "--locked" in call for call in calls)
+    assert all(call[call.index("--only-group") + 1] == "dev" for call in calls)
+    assert not any("--with" in call for call in calls)
     assert all(call[-1] == f"tests/{kind}" for call in calls)
-    assert all(("ghapi==2.1.5" in call) == (kind == "scripts") for call in calls)
 
 
 def test_unsupported_python_version_fails_before_running_tests(monkeypatch):
@@ -60,7 +55,6 @@ def test_unsupported_python_version_fails_before_running_tests(monkeypatch):
 def test_selected_versions_run_once_in_the_given_order(monkeypatch):
     run = Mock()
     monkeypatch.setattr(tasks, "supported_versions", lambda: ["3.12", "3.13", "3.14"])
-    monkeypatch.setattr(tasks, "tool_requirement", lambda name: f"{name}==1")
     monkeypatch.setattr(tasks, "run_uv", run)
     tasks.run_tests("package", ["3.14", "3.12", "3.14"])
     calls = [call.args for call in run.call_args_list]

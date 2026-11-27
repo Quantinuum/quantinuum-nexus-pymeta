@@ -1,4 +1,11 @@
+# PyPI is listed as an ordinary (not default) index, with the first-index
+# strategy, so that it takes priority over user-level indexes and strategies
+# even when uv merges them into this configuration.
+index-strategy = "first-index"
+
 [[index]]
 name = "pypi"
 url = "https://pypi.org/simple"
-default = true
+
+[pip]
+index-strategy = "first-index"

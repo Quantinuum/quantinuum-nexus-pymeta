@@ -43,4 +43,4 @@ jobs:
           GH_TOKEN: ${{ secrets.HUGRBOT_PAT }}
           WORKFLOW_DISPATCH_TOKEN: ${{ github.token }}
           PREVIEW_FORCE: ${{ github.event_name == 'workflow_dispatch' }}
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py preview
+        run: uv run --locked --only-group automation python scripts/release_series.py preview
