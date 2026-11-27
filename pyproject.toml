@@ -17,9 +17,11 @@ dependencies = [
     "pytket==2.18.5",
     "qnexus==0.51.4",
     "tierkreis==3.1.0",
+    "hugr-qir==0.4.0",
     # Supporting Quantinuum packages required by the components
     "guppylang-internals==1.2.3",
     "hugr==0.18.8",
+    "quantinuum-qircheck==0.9.0",
     "quantinuum-schemas==8.1.1",
     "qwasm==1.0.1",
     "selene-core==0.3.4",

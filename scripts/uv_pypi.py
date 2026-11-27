@@ -34,4 +34,7 @@ def run_uv(*arguments: str) -> None:
 
 
 if __name__ == "__main__":
-    run_uv(*sys.argv[1:])
+    try:
+        run_uv(*sys.argv[1:])
+    except subprocess.CalledProcessError as error:
+        sys.exit(error.returncode)
