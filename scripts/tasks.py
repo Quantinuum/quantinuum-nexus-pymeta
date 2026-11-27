@@ -35,12 +35,13 @@ def run_tests(kind: str, versions: list[str]):
         print(f"Running {kind} tests on Python {selected}", flush=True)
         if kind == "integration":
             # Integration tests import the SDK, so they run in a fresh environment
-            # with the locked runtime dependencies and the dev group's pytest.
-            environment = ["--locked"]
+            # with the locked runtime dependencies and the pinned pytest only.
+            environment = ["--locked", "--no-default-groups"]
         else:
-            environment = ["--no-project", "--with", tool_requirement("pytest")]
-            if kind == "scripts":
-                environment += ["--with", tool_requirement("ghapi")]
+            environment = ["--no-project"]
+        environment += ["--with", tool_requirement("pytest")]
+        if kind == "scripts":
+            environment += ["--with", tool_requirement("ghapi")]
         run_uv(
             "run",
             "--isolated",
@@ -65,8 +66,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     os.chdir(ROOT)
     if args.command in TEST_KINDS:
-        if args.command == "integration":
-            os.environ.pop("VIRTUAL_ENV", None)
         run_tests(args.command, args.versions)
     elif args.command == "hooks-install":
         os.environ.pop("VIRTUAL_ENV", None)

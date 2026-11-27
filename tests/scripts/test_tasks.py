@@ -51,12 +51,17 @@ def test_test_commands_use_each_supported_interpreter_and_pinned_pytest(
 def test_integration_tests_run_in_fresh_locked_sdk_environments(monkeypatch):
     run = Mock()
     monkeypatch.setattr(tasks, "supported_versions", lambda: ["3.12", "3.13", "3.14"])
+    monkeypatch.setattr(tasks, "tool_requirement", lambda name: f"{name}==1")
     monkeypatch.setattr(tasks, "run_uv", run)
     tasks.run_tests("integration", ["3.12", "3.14"])
     calls = [call.args for call in run.call_args_list]
     assert [call[call.index("--python") + 1] for call in calls] == ["3.12", "3.14"]
-    assert all("--isolated" in call and "--locked" in call for call in calls)
-    assert all("--no-project" not in call and "--with" not in call for call in calls)
+    for call in calls:
+        assert {"--isolated", "--locked", "--no-default-groups"} <= set(call)
+        assert "--no-project" not in call
+        assert [call[i + 1] for i, arg in enumerate(call) if arg == "--with"] == [
+            "pytest==1"
+        ]
     assert all(call[-1] == "tests/integration" for call in calls)
 
 

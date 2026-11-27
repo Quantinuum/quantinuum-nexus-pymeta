@@ -15,7 +15,7 @@ from guppylang.std.quantum import (
 from hugr.package import Package
 from hugr.qsystem.result import QsysResult
 from pytket.backends.backendresult import BackendResult
-from selene_sim import DepolarizingErrorModel, Quest, Stim, build
+from selene_sim import DepolarizingErrorModel, Quest, Stim
 
 
 @guppy
@@ -48,18 +48,20 @@ def test_non_clifford_program_runs_on_statevector(emulate, register_outcomes):
     assert register_outcomes(result, "q") == {"0"}
 
 
-def test_serialized_hugr_runs_directly_on_selene():
+def test_serialized_hugr_runs_directly_on_selene(selene_build):
     package = Package.from_bytes(ghz.compile().to_bytes())
-    runner = build(package)
+    runner = selene_build(package)
     for simulator in [Stim(random_seed=1), Quest(random_seed=1)]:
-        result = QsysResult(runner.run_shots(simulator, n_qubits=3, n_shots=20))
-        assert set(result.register_counts()["ghz"]) <= {"000", "111"}
+        result = QsysResult(runner.run_shots(simulator, n_qubits=3, n_shots=50))
+        counts = result.register_counts()["ghz"]
+        assert counts.total() == 50
+        assert set(counts) == {"000", "111"}
 
 
-def test_error_model_introduces_noise():
+def test_error_model_introduces_noise(selene_build):
     noise = DepolarizingErrorModel(random_seed=1, p_init=0.2, p_meas=0.2)
     result = QsysResult(
-        build(ghz.compile()).run_shots(
+        selene_build(ghz.compile()).run_shots(
             Stim(random_seed=1), error_model=noise, n_qubits=3, n_shots=100
         )
     )

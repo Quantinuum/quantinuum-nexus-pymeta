@@ -10,7 +10,10 @@ import pytest
 import tierkreis
 from tierkreis.builder import Graph
 from tierkreis.builtins import iadd, itimes
-from tierkreis.models import TKR
+from tierkreis.guppy_worker import from_circuit, normalize
+from tierkreis.models import TKR, OpaqueType
+from tierkreis.nexus_worker import upload_hugr
+from tierkreis.pytket_worker import from_qasm2_str
 from tierkreis.runtime import new_in_memory
 
 # Generated worker stubs that exchange SDK objects (circuits, HUGR packages,
@@ -33,6 +36,22 @@ def build_workflow():
     return graph.finish_with_outputs(graph.task(iadd(product, graph.const(1))))
 
 
+class UploadInputs(NamedTuple):
+    qasm: TKR[str]
+    project_name: TKR[str]
+
+
+def build_upload_workflow():
+    """Chain the pytket, guppy, and nexus workers: QASM to a Nexus HUGR upload."""
+    graph = Graph(UploadInputs, TKR[OpaqueType["qnexus.models.references.HUGRRef"]])
+    circuit = graph.task(from_qasm2_str(graph.inputs.qasm))
+    package = graph.task(from_circuit(circuit, graph.const("main")))
+    package = graph.task(normalize(package))
+    return graph.finish_with_outputs(
+        graph.task(upload_hugr(package, graph.inputs.project_name))
+    )
+
+
 async def run_workflow(value):
     runtime = await new_in_memory()
     with runtime:
@@ -48,8 +67,21 @@ def test_builtin_workflow_runs_in_memory():
     assert asyncio.run(run_workflow(3)) == 16
 
 
+async def save_workflow(name, workflow):
+    runtime = await new_in_memory()
+    with runtime:
+        return await runtime.save_workflow(name, workflow)
+
+
+def test_workflow_across_sdk_workers_builds_and_saves():
+    # Running it needs the separately deployed workers and Nexus access.
+    assert asyncio.run(save_workflow("qasm to nexus", build_upload_workflow()))
+
+
 def opaque_types(worker):
-    source = (Path(tierkreis.__file__).parent / f"{worker}.py").read_text()
+    source = (Path(tierkreis.__file__).parent / f"{worker}.py").read_text(
+        encoding="utf-8"
+    )
     return sorted(set(re.findall(r'OpaqueType\["([\w.]+)"\]', source)))
 
 

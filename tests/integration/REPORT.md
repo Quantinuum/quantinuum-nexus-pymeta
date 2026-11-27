@@ -1,11 +1,12 @@
 # SDK integration test report
 
 Findings from writing `tests/integration/` against the pinned SDK components
-in `pyproject.toml` (quantinuum-nexus 26.1.0). Each failure below is an example
-from a component's documentation that should work but does not with the pinned
-versions. The corresponding tests in `test_documented_examples.py` are marked
-`xfail(strict=True)`, so they start failing (XPASS) once the issue is fixed and
-the marker should be removed.
+in `pyproject.toml` (quantinuum-nexus 26.1.0). Each failure below is a documented
+example or a combination of components that should work but does not with the
+pinned versions. The corresponding tests are marked `xfail(strict=True)`, so they
+start failing (XPASS) once the issue is fixed and the marker should be removed.
+README examples are read from the installed packages' metadata, so a fix in a
+newly pinned README is picked up without editing the tests.
 
 ## Failures (xfail)
 
@@ -23,9 +24,9 @@ the marker should be removed.
   ```
 
 - Fix: `result("measurements", collect_measurements(measure_array(qubits)))`.
-  The README also relies on `from guppylang.std.quantum import *` to provide
-  `array` and `result`; `result` is a deprecated alias of
-  `guppylang.std.builtins.output`.
+  `result` is a deprecated alias of `output` that Guppy makes available in every
+  `@guppy` function; it is not exported by `guppylang.std.quantum`. Using
+  `output` imported from `guppylang.std.builtins` would avoid the deprecation.
 
 ### 2. selene-sim README: `runner.run(..., n_shots=...)`
 
@@ -56,6 +57,22 @@ the marker should be removed.
   `SteaneBuilder().with_n_blocks(3).build()`). With that change the README
   program encodes and emulates correctly; `test_guppyft.py` covers it.
 
+### 4. hugr-qir cannot lower guppyft-encoded programs
+
+- Components: guppyft 0.7.0, hugr-qir 0.4.0
+- Test: `test_guppyft.py::test_steane_encoded_program_lowers_to_qir`
+- A Steane-encoded teleportation program emulates correctly on Selene, but
+  `hugr_to_qir` on the same encoded package fails, and asks for a bug report:
+
+  ```text
+  ValueError: Compilation failed unexpectedly: Failed to emit LLVM for function
+  guppyft.encode._implement_ops.implement_ops.<locals>.outer_wrapper at node
+  Node(1) This may be a compiler bug. Please report it with a reproducing example.
+  ```
+
+- An unencoded teleportation program lowers to valid QIR (`test_hugr_qir.py`), so the
+  failure is in lowering guppyft's generated wrapper functions.
+
 ## Observations (not failures)
 
 - Every Selene emulation emits `DeprecationWarning: Use
@@ -73,3 +90,12 @@ the marker should be removed.
 - guppyalgos' Cuccaro adder uses non-Clifford Toffoli decompositions, so it
   needs Selene's statevector simulator; Stim rejects its `RZ(pi/4)` gates. This
   is expected behaviour.
+- guppyalgos' state preparation lowers to valid QIR, but its Cuccaro adder and
+  QFT do not, for documented limitations of the H-series QIR target rather than
+  bugs: the adder may panic (`Option.unwrap`, and runtime panics are unsupported
+  on H2), and the QFT has loops that cannot be unrolled at compile time (even
+  with `max_loop_unroll=100000`). They run on Selene, which is tested.
+- `tierkreis.data.types.is_ptype(EmulatorResult)` is false, although the
+  `guppy_worker.emulate` stub returns one. This is not a failure: the deployed
+  worker (`tierkreis_workers/guppy_worker` in the tierkreis repository) wraps
+  the result with a custom tierkreis `Serializer`.

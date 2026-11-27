@@ -15,7 +15,7 @@ from hugr.package import Package
 from hugr.qsystem.result import QsysResult
 from pytket import Circuit
 from pytket.passes import RemoveRedundancies
-from selene_sim import Stim, build
+from selene_sim import Stim
 from tket.passes import Normalize, PytketHugrPass, QSystemRebasePass
 
 bell_circuit = guppy.load_pytket(
@@ -51,16 +51,27 @@ def test_pytket_circuit_runs_inside_guppy(emulate, register_outcomes):
 
 
 @pytest.mark.parametrize(
-    "hugr_pass",
-    [PytketHugrPass(RemoveRedundancies()), QSystemRebasePass(), Normalize()],
-    ids=lambda hugr_pass: type(hugr_pass).__name__,
+    ("hugr_pass", "simplifies"),
+    [
+        (PytketHugrPass(RemoveRedundancies()), True),
+        (Normalize(), True),
+        # Rebasing to the Quantinuum gate set adds nodes.
+        (QSystemRebasePass(), False),
+    ],
+    ids=["PytketHugrPass", "Normalize", "QSystemRebasePass"],
 )
-def test_tket_passes_preserve_guppy_program_behaviour(hugr_pass):
-    package = redundant_bell.compile()
-    pass_result = hugr_pass.run(package.modules[0])
+def test_tket_passes_preserve_guppy_program_behaviour(
+    hugr_pass, simplifies, selene_build
+):
+    # Minimal optimisation leaves the redundant gates for the tket pass.
+    package = redundant_bell.with_minimal_opt().compile()
+    hugr = package.modules[0]
+    pass_result = hugr_pass.run(hugr, inplace=False)
+    assert pass_result.modified
+    assert (pass_result.hugr.num_nodes() < hugr.num_nodes()) == simplifies
     optimised = Package(modules=[pass_result.hugr], extensions=package.extensions)
     result = QsysResult(
-        build(optimised).run_shots(Stim(random_seed=1), n_qubits=2, n_shots=50)
+        selene_build(optimised).run_shots(Stim(random_seed=1), n_qubits=2, n_shots=50)
     )
     outcomes = {tuple(sorted(dict(shot).items())) for shot in result.collated_counts()}
     assert outcomes == {(("a", "0"), ("b", "0")), (("a", "1"), ("b", "1"))}

@@ -1,5 +1,7 @@
 """Guppy and pytket programs lowered to QIR with hugr-qir and checked by qircheck."""
 
+import base64
+
 import pytest
 from guppylang import guppy
 from guppylang.std.builtins import array, output, owned
@@ -72,3 +74,10 @@ def test_serialized_pytket_derived_hugr_lowers_to_valid_qir(output_format):
     qir = hugr_to_qir(Package.from_bytes(hugr_bytes), output_format=output_format)
     assert isinstance(qir, bytes if output_format == OutputFormat.BITCODE else str)
     qircheck(qir)
+
+
+def test_default_output_is_base64_encoded_bitcode():
+    package = teleport_one.compile()
+    bitcode = base64.b64decode(hugr_to_qir(package))
+    qircheck(bitcode)
+    assert bitcode == hugr_to_qir(package, output_format=OutputFormat.BITCODE)

@@ -1,168 +1,42 @@
-"""Examples from the SDK components' README files, run verbatim.
+"""Examples from the SDK components' documentation, run verbatim.
 
-Examples that fail against the pinned versions are marked ``xfail(strict=True)``
-so a fix in either the documentation or the package is noticed. See
+README examples are read from the installed packages' metadata, so they track
+the pinned versions. Examples that fail are marked ``xfail(strict=True)``, so a
+fix in a newly pinned README or package shows up as XPASS. See
 ``tests/integration/REPORT.md`` for details of each failure.
 """
 
+import re
 import runpy
 import textwrap
+from importlib.metadata import metadata
 
 import pytest
 from guppylang_internals.error import GuppyError
 
-GUPPYLANG_README = """
-from guppylang import guppy
-from guppylang.std.builtins import owned
-from guppylang.std.quantum import cx, h, measure, qubit, x, z
+
+def readme_examples(distribution):
+    """Return the Python code blocks in an installed distribution's README."""
+    package_metadata = metadata(distribution)
+    readme = package_metadata.get_payload() or package_metadata["Description"]
+    return re.findall(r"```python\n(.*?)```", readme, re.DOTALL)
 
 
-@guppy
-def teleport(src: qubit @ owned, tgt: qubit) -> None:
-    \"\"\"Teleports the state in `src` to `tgt`.\"\"\"
-    # Create ancilla and entangle it with src and tgt
-    tmp = qubit()
-    h(tmp)
-    cx(tmp, tgt)
-    cx(src, tmp)
+def selene_examples():
+    """Return the selene-sim README examples, in order.
 
-    # Apply classical corrections
-    h(src)
-    if measure(src):
-        z(tgt)
-    if measure(tmp):
-        x(tgt)
+    The program is also returned with its measurements collected, so that the
+    later examples can be checked independently of its compilation failure.
+    """
+    program, build, shots, noise, runtime = readme_examples("selene-sim")
+    collected = program.replace(
+        "ms = measure_array(qubits)",
+        "ms = collect_measurements(measure_array(qubits))",
+    )
+    return program, collected, build, shots, noise, runtime
 
 
-teleport.check()
-"""
-
-SELENE_README_PROGRAM = """
-from guppylang import guppy
-from guppylang.std.quantum import *
-from hugr.qsystem.result import QsysShot, QsysResult
-
-@guppy
-def main() -> None:
-    # allocate 10 qubits
-    qubits = array(qubit() for _ in range(10))
-
-    # prepare the 10-qubit GHZ state (|0000000000> + |1111111111>)/sqrt(2)
-    h(qubits[0])
-    for i in range(9):
-        cx(qubits[i], qubits[i+1])
-
-    # measure all qubits
-    ms = measure_array(qubits)
-
-    # report measurements to the results stream
-    result("measurements", ms)
-
-compiled_hugr = main.compile()
-"""
-
-# The README program with its measurements collected, so that the remaining
-# README snippets can be checked independently of the compilation failure.
-SELENE_PROGRAM_COLLECTED = SELENE_README_PROGRAM.replace(
-    "ms = measure_array(qubits)",
-    "ms = collect_measurements(measure_array(qubits))",
-)
-
-SELENE_README_BUILD = """
-from selene_sim import build
-runner = build(compiled_hugr)
-"""
-
-SELENE_README_SINGLE_SHOTS = """
-from selene_sim import Quest, Stim
-# run a single shot with Quest, the statevector simulator
-shot = QsysShot(runner.run(simulator=Quest(), n_qubits=10))
-print(shot)
-
-# run a single shot with Stim, the stabilizer simulator
-shot = QsysShot(runner.run(simulator=Stim(), n_qubits=10))
-print(shot)
-"""
-
-SELENE_README_MULTI_SHOT = """
-# run_shots runs efficient multi-shot simulations
-# n_processes provides multi-processing across shots
-# deterministic results can be achieved by providing a random seed
-shots = QsysShot(runner.run(
-    simulator=Stim(random_seed=5),
-    n_qubits=10,
-    n_shots=100,
-    n_processes=8
-))
-print(shots)
-"""
-
-SELENE_README_NOISE = """
-from selene_sim import DepolarizingErrorModel
-error_model = DepolarizingErrorModel(
-    random_seed=12478918,
-    p_init=1e-3,
-    p_meas=1e-2,
-    p_1q=1e-5,
-    p_2q=1e-6,
-)
-
-shots = QsysResult(runner.run_shots(
-    simulator=Stim(
-        random_seed=10
-    ),
-    error_model=error_model,
-    n_qubits=10,
-    n_shots=20,
-    n_processes=4,
-))
-print(shots)
-
-from selene_sim import SoftRZRuntime
-
-shots = QsysResult(runner.run_shots(
-    simulator=Stim(),
-    runtime=SoftRZRuntime(),
-    error_model=error_model,
-    n_qubits=10,
-    n_shots=20
-))
-print(shots)
-"""
-
-GUPPYFT_README = """
-from guppylang import guppy
-from guppylang.std.builtins import owned, output
-from guppylang.std.quantum import cx, h, measure, qubit, x, z
-from guppyft.code.steane.encode import SteaneBuilder
-
-
-@guppy
-def teleport() -> None:
-    \"\"\"Teleports the state in `src` to `tgt`.\"\"\"
-    src = qubit()
-
-    tmp = qubit()
-    tgt = qubit()
-    h(tmp)
-    cx(tmp, tgt)
-
-    cx(src, tmp)
-    h(src)
-    if measure(src).read():
-        z(tgt)
-    if measure(tmp).read():
-        x(tgt)
-
-    output("tgt", measure(tgt).read())
-
-
-# Use Steane architecture to encode the program
-steane = SteaneBuilder().build(n_blocks=3)
-teleport_encoded = steane.encode(teleport.compile())
-"""
-
-# From guppyalgos' getting-started guide.
+# From guppyalgos' getting-started guide, which is not in its package metadata.
 GUPPYALGOS_GETTING_STARTED = """
 from guppylang import guppy
 from guppylang.std.quantum import discard_array
@@ -190,14 +64,17 @@ def run_example(tmp_path):
 
     def run(*snippets):
         path = tmp_path / "example.py"
-        path.write_text("\n".join(textwrap.dedent(s) for s in snippets))
+        path.write_text(
+            "\n".join(textwrap.dedent(s) for s in snippets), encoding="utf-8"
+        )
         return runpy.run_path(str(path), run_name="example")
 
     return run
 
 
 def test_guppylang_readme(run_example):
-    run_example(GUPPYLANG_README)
+    [example] = readme_examples("guppylang")
+    run_example(example)
 
 
 @pytest.mark.xfail(
@@ -206,14 +83,15 @@ def test_guppylang_readme(run_example):
     reason="REPORT.md#1: selene-sim README passes Measurement values to result()",
 )
 def test_selene_readme_program(run_example):
-    run_example(SELENE_README_PROGRAM)
+    program, *_ = selene_examples()
+    run_example(program)
 
 
 def test_selene_readme_build_and_single_shots(run_example):
-    namespace = run_example(
-        SELENE_PROGRAM_COLLECTED, SELENE_README_BUILD, SELENE_README_SINGLE_SHOTS
-    )
-    assert set(namespace["shot"].entries[0][1]) in ({0}, {1})
+    _, program, build, shots, *_ = selene_examples()
+    single_shots, _, _ = shots.partition("# run_shots")
+    namespace = run_example(program, build, single_shots)
+    assert len(namespace["shot"].entries[0][1]) == 10
 
 
 @pytest.mark.xfail(
@@ -222,20 +100,15 @@ def test_selene_readme_build_and_single_shots(run_example):
     reason="REPORT.md#2: selene-sim README passes n_shots to SeleneInstance.run()",
 )
 def test_selene_readme_multi_shot(run_example):
-    run_example(
-        SELENE_PROGRAM_COLLECTED,
-        SELENE_README_BUILD,
-        "from selene_sim import Stim",
-        SELENE_README_MULTI_SHOT,
-    )
+    _, program, build, shots, *_ = selene_examples()
+    run_example(program, build, shots)
 
 
 def test_selene_readme_noise_and_runtime(run_example):
+    _, program, build, _, noise, runtime = selene_examples()
+    # Stim is imported by the preceding README example.
     namespace = run_example(
-        SELENE_PROGRAM_COLLECTED,
-        SELENE_README_BUILD,
-        "from selene_sim import Stim",
-        SELENE_README_NOISE,
+        program, build, "from selene_sim import Stim", noise, runtime
     )
     assert len(namespace["shots"].results) == 20
 
@@ -246,7 +119,8 @@ def test_selene_readme_noise_and_runtime(run_example):
     reason="REPORT.md#3: guppyft README calls SteaneBuilder().build(n_blocks=3)",
 )
 def test_guppyft_readme(run_example):
-    run_example(GUPPYFT_README)
+    [example] = readme_examples("guppyft")
+    run_example(example)
 
 
 def test_guppyalgos_getting_started(run_example):

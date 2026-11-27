@@ -1,5 +1,6 @@
-"""guppyalgos primitives compiled with Guppy and run on Selene."""
+"""guppyalgos primitives compiled with Guppy, run on Selene, and lowered to QIR."""
 
+import pytest
 from guppyalgos.primitives.arithmetic.adder.adder_ripple_cuccaro import (
     adder_ripple_cuccaro_mod,
 )
@@ -9,6 +10,9 @@ from guppyalgos.utils import qarray
 from guppylang import guppy
 from guppylang.std.builtins import output
 from guppylang.std.quantum import collect_measurements, measure_array, x
+from hugr_qir.hugr_to_qir import hugr_to_qir
+from hugr_qir.output import OutputFormat
+from quantinuum_qircheck import qircheck
 
 uniform_over_4_states = uniform_state(4)
 
@@ -71,3 +75,11 @@ def test_cuccaro_adder(emulate):
 def test_qft_followed_by_inverse_is_identity(emulate):
     result = emulate(qft_roundtrip, n_qubits=3, shots=20, stabilizer=False)
     assert result.register_counts()["r"] == {"101": 20}
+
+
+@pytest.mark.parametrize(
+    "entrypoint", [prepare_ghz, prepare_uniform], ids=["ghz", "uniform"]
+)
+def test_state_preparation_lowers_to_valid_qir(entrypoint):
+    qir = hugr_to_qir(entrypoint.compile(), output_format=OutputFormat.LLVM_IR)
+    qircheck(qir)

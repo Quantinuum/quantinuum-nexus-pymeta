@@ -35,13 +35,15 @@ separated by what they check:
 - `tests/integration/` checks that the SDK components work together offline:
   Guppy programs on the Selene emulator, pytket circuits and tket passes on Guppy
   HUGR, lowering to QIR with hugr-qir, guppyft and guppyalgos, Tierkreis workflows,
-  and qnexus job inputs. It also runs the components' README examples; examples
+  and qnexus uploads against a mocked Nexus. It also runs the README examples
+  from the installed packages' metadata; examples and component combinations
   that fail with the pinned versions are strict `xfail`s explained in
   [`tests/integration/REPORT.md`](tests/integration/REPORT.md).
 
 An ordinary `pytest` run selects `tests/scripts/`. Use `pytest tests/package` to
 select package tests. Integration tests import the SDK, so they run in a fresh
-environment from `uv.lock` (`uv run --locked --isolated`); in the project
+environment from `uv.lock` with only the pinned pytest added
+(`uv run --isolated --locked --no-default-groups --with pytest==...`); in the project
 `.venv`, `python -m pytest tests/integration` also works.
 The `just` commands run the selected suite across supported Python versions.
 
