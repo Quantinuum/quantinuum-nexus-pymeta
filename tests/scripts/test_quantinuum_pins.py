@@ -108,3 +108,48 @@ def test_readme_must_list_exactly_the_pinned_packages():
         ["qwasm"],
         ["hugr"],
     )
+
+
+def test_reports_locked_packages_and_files_not_from_pypi():
+    pypi = {"registry": "https://pypi.org/simple"}
+    files = "https://files.pythonhosted.org/packages/ab/cd"
+    private = "https://private.example/files"
+    lookalike = "https://files.pythonhosted.org.example/pytket-2.18.0-py3-none-any.whl"
+    lock = {
+        "package": [
+            {
+                "name": "quantinuum-nexus",
+                "version": "26.2.0",
+                "source": {"editable": "."},
+            },
+            {
+                "name": "numpy",
+                "version": "2.5.4",
+                "source": pypi,
+                "sdist": {"url": f"{files}/numpy-2.5.4.tar.gz"},
+                "wheels": [{"url": f"{files}/numpy-2.5.4-py3-none-any.whl"}],
+            },
+            {
+                "name": "hugr",
+                "version": "99.0.0",
+                "source": {"registry": "https://private.example/simple"},
+            },
+            {"name": "tket", "version": "0.15.16", "source": {"git": "https://x/tket"}},
+            {
+                "name": "pytket",
+                "version": "2.18.0",
+                "source": pypi,
+                "sdist": {"url": f"{private}/pytket-2.18.0.tar.gz"},
+                "wheels": [
+                    {"url": f"{files}/pytket-2.18.0-py3-none-any.whl"},
+                    {"url": lookalike},
+                ],
+            },
+        ]
+    }
+    assert quantinuum_pins.non_pypi_packages(lock, "quantinuum-nexus") == [
+        ("hugr", "99.0.0", "source {'registry': 'https://private.example/simple'}"),
+        ("pytket", "2.18.0", f"file {lookalike}"),
+        ("pytket", "2.18.0", f"file {private}/pytket-2.18.0.tar.gz"),
+        ("tket", "0.15.16", "source {'git': 'https://x/tket'}"),
+    ]

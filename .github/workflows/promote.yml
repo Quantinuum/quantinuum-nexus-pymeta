@@ -43,4 +43,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.HUGRBOT_PAT }}
           CANDIDATE: ${{ inputs.candidate }}
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py promote "$CANDIDATE"
+        run: uv run --locked --only-group automation python scripts/release_series.py promote "$CANDIDATE"

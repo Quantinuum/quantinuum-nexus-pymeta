@@ -6,6 +6,10 @@ project, see the [README](README.md#installation).
 
 ## Local development and validation
 
+CI uses uv 0.13.10. `uv.toml` requires uv 0.12.22 or later, the first version
+that writes `uv.lock` in its current format, so older versions fail before
+running.
+
 Install Python, uv 0.13.10, `just`, and Git, then run:
 
 ```sh
@@ -18,6 +22,7 @@ just test-integration      # SDK component integration tests on 3.12/3.13/3.14
 just test-integration 3.12  # Integration tests on one Python version
 just test-all              # All tests, including installation and integration
 just hooks                 # Run the pre-commit checks over all tracked files
+just lock                  # Update uv.lock, resolving only from PyPI
 ```
 
 `just` lists the available commands. Python versions come from `requires-python`
@@ -26,8 +31,9 @@ enumerated without a network request; an unbounded range uses GitHub's stable
 Python version manifest. uv downloads missing interpreters when needed.
 
 Python tests use pytest, with exact pytest and pre-commit versions pinned in the
-`dev` dependency group. The runner isolates pytest from the runtime dependencies,
-except for integration tests, and runs each Python minor sequentially. Tests are
+`dev` dependency group. The runner installs only that group from `uv.lock`, isolated
+from the runtime dependencies, except that integration tests also install the
+locked runtime dependencies. It runs each Python minor sequentially. Tests are
 separated by what they check:
 
 - `tests/scripts/` checks repository tooling, including release and merge policies.
@@ -42,16 +48,17 @@ separated by what they check:
 
 An ordinary `pytest` run selects `tests/scripts/`. Use `pytest tests/package` to
 select package tests. Integration tests import the SDK, so they run in a fresh
-environment from `uv.lock` with only the pinned pytest added
-(`uv run --isolated --locked --no-default-groups --with pytest==...`); in the project
+environment from `uv.lock` with the `dev` group added
+(`uv run --isolated --locked --no-default-groups --group dev`); in the project
 `.venv`, `python -m pytest tests/integration` also works.
 The `just` commands run the selected suite across supported Python versions.
 
 `just setup` installs a Git pre-commit hook in this checkout. The hooks run
 Ruff's linter with safe automatic fixes, format Python files, trim trailing
 whitespace, ensure a single final newline, and normalize text line endings to
-LF. Markdown hard line breaks are preserved. Hook tool versions are pinned in
-`.pre-commit-config.yaml`; pre-commit installs them in isolated environments.
+LF. Markdown hard line breaks are preserved. The hook tools, Ruff and
+`pre-commit-hooks`, are pinned in the `dev` dependency group and run from the
+locked project environment, so pre-commit installs nothing from a package index.
 If a hook modifies files, review and stage the changes before committing again.
 
 To lint or format every tracked Python file explicitly, run:
@@ -80,30 +87,50 @@ Tests mock GitHub responses and never submit real reviews or merges.
 
 To run an automation script locally, set `GITHUB_REPOSITORY` to `owner/repository`
 and `GH_TOKEN` to a token with the required permissions, then use
-`python3 scripts/uv_pypi.py run --isolated --locked --only-group automation python scripts/<script>.py ...`.
+`uv run --isolated --locked --only-group automation python scripts/<script>.py ...`.
 The automation dependencies are excluded from the published SDK's runtime dependencies.
 
 Commands that dispatch publication also require `WORKFLOW_DISPATCH_TOKEN`, a
 token with Actions write permission. GitHub Actions jobs supply their built-in
 `GITHUB_TOKEN` for this purpose.
 
-`scripts/uv_pypi.py` uses `uv.toml` explicitly, which excludes user- and
-system-level uv configuration. It also removes package-index environment
-overrides for the child process. Installation tests and CI use this same PyPI
-configuration, without changing your global settings.
+### Package index isolation
 
-Use this wrapper for repository uv commands, including installing from this
-checkout:
+Every package this repository installs must come from PyPI, so that a package
+with the same name on another index, such as a private company index, cannot
+take its place. This is enforced without changing your global settings:
+
+- `uv.lock` records the source of every package, and `--locked` or `--frozen`
+  commands install exactly those files whatever indexes are configured. The
+  project's build backend and other build dependencies are not locked, so the
+  commit hooks use `--only-group dev --no-build` to install only locked wheels.
+  `just check-pins` and the **Quantinuum pins** CI check fail if any locked
+  package or file comes from somewhere other than PyPI. The commit hooks run
+  this check first and stop before installing anything if it fails. In CI, where no other index is
+  configured, `uv lock --check` rejects such a lockfile too.
+- The `just` recipes set `UV_CONFIG_FILE` to `uv.toml`, which replaces user- and
+  system-level uv configuration, and remove index overrides such as `UV_INDEX`
+  and `UV_EXTRA_INDEX_URL` from the environment. Commands that resolve packages
+  afresh, such as `just lock` and the installation tests, therefore use only PyPI.
+- `uv.toml` lists PyPI as an ordinary rather than default index and selects the
+  `first-index` strategy, so even a bare `uv` command in this checkout prefers
+  PyPI to indexes from user-level configuration. Bare commands still merge
+  user-level `find-links`, and environment overrides still take precedence.
+
+Update the lockfile with `just lock` rather than bare `uv lock`. For other
+commands that resolve packages, pass `--config-file uv.toml` and unset
+`UV_INDEX`, `UV_DEFAULT_INDEX`, `UV_INDEX_URL`, `UV_EXTRA_INDEX_URL`,
+`UV_FIND_LINKS`, `UV_INDEX_STRATEGY`, `UV_NO_CONFIG`, and `UV_ENV_FILE` if they
+are set. For
+example, install from this checkout with:
 
 ```sh
-python3 scripts/uv_pypi.py pip install .
+uv --config-file uv.toml pip install .
 ```
 
-Bare `uv` commands still merge user-level index configuration. For an explicit
-configuration without the wrapper, use `uv --config-file uv.toml ...`; environment
-overrides still apply to that form. A published metapackage cannot control the
-installer's indexes. For the published uv installation command in the [README](README.md#installation), unset
-`UV_INDEX`, `UV_EXTRA_INDEX_URL`, and `UV_FIND_LINKS` if they are set.
+A published metapackage cannot control the installer's indexes. For the
+published uv installation command in the [README](README.md#installation), unset
+the same environment variables if they are set.
 
 The installation tests build a wheel and source distribution, install each
 into a separate fresh environment, run `uv pip check`, and verify the installed

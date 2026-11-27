@@ -4,7 +4,9 @@ A package counts as Quantinuum-managed when its PyPI metadata for the locked
 version links to github.com/Quantinuum or github.com/CQCL, or an author or
 maintainer uses a quantinuum.com address.
 
-The README's "Included tools" section must also name exactly the pinned packages.
+The README's "Included tools" section must also name exactly the pinned packages,
+and every locked package and file must come from PyPI, so that a package from
+another index with the same name cannot enter the lockfile.
 """
 
 import json
@@ -18,6 +20,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+PYPI = "https://pypi.org/simple"
+PYPI_FILES = "https://files.pythonhosted.org/"
 ORGANISATIONS = re.compile(r"github\.com/(quantinuum|cqcl)(/|$)", re.IGNORECASE)
 EMAIL = re.compile(r"@quantinuum\.com\b", re.IGNORECASE)
 README_SECTION = "## Included tools"
@@ -58,6 +62,25 @@ def runtime_packages(lock: dict, project: str) -> set[tuple[str, str]]:
         for dependency in references:
             pending += targets(dependency)
     return {(name, version) for name, version in found if name != project}
+
+
+def non_pypi_packages(lock: dict, project: str) -> list[tuple[str, str, str]]:
+    """Return each locked source or file, except the project's, not from PyPI."""
+    found = []
+    for package in lock["package"]:
+        if package["name"] == project:
+            continue
+        name, version = package["name"], package["version"]
+        source = package.get("source", {})
+        if source != {"registry": PYPI}:
+            found.append((name, version, f"source {source}"))
+        files = [*package.get("wheels", []), *filter(None, [package.get("sdist")])]
+        found += [
+            (name, version, f"file {file.get('url')}")
+            for file in files
+            if not str(file.get("url")).startswith(PYPI_FILES)
+        ]
+    return sorted(found)
 
 
 def pinned(dependencies: list[str]) -> set[str]:
@@ -135,6 +158,12 @@ if __name__ == "__main__":
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
     lock = tomllib.loads((ROOT / "uv.lock").read_text())
     readme = (ROOT / "README.md").read_text()
+    foreign = non_pypi_packages(lock, project["name"])
+    for name, version, origin in foreign:
+        print(
+            f"::error file=uv.lock::{name} {version} is locked with {origin}, "
+            f"not from {PYPI}; run `just lock` to resolve it from PyPI"
+        )
     unlisted, unexpected = readme_mismatches(project, readme)
     for name in unlisted:
         print(
@@ -146,12 +175,16 @@ if __name__ == "__main__":
             f"::error file=README.md::{name} is listed under "
             f'"{README_SECTION}" but is not pinned in project.dependencies'
         )
-    missing = unpinned(project, lock, pypi_info)
+    # Locked versions from other indexes may not exist on PyPI.
+    missing = [] if foreign else unpinned(project, lock, pypi_info)
     for name, version in missing:
         print(
             f"::error file=pyproject.toml::Pin the Quantinuum package {name}: "
             f'add "{name}=={version}" to project.dependencies'
         )
-    if unlisted or unexpected or missing:
+    if foreign or unlisted or unexpected or missing:
         sys.exit(1)
-    print("Every Quantinuum package in uv.lock is pinned and listed in the README.")
+    print(
+        "Every package in uv.lock comes from PyPI, and every Quantinuum package "
+        "is pinned and listed in the README."
+    )

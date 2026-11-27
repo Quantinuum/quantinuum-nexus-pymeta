@@ -39,14 +39,14 @@ jobs:
       # tagged commit to match its RC; stop before tagging a mismatch.
       - name: Keep an unreleased stable version identical to its RC
         working-directory: release
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py verify-promotion --unreleased
+        run: uv run --locked --only-group automation python scripts/release_series.py verify-promotion --unreleased
       - name: Check series support and branch version
         id: policy
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_BRANCH: ${{ github.ref_name }}
           MANUAL_RELEASE: ${{ github.event_name == 'workflow_dispatch' }}
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_policy.py
+        run: uv run --locked --only-group automation python scripts/release_policy.py
 
   release:
     outputs:
@@ -92,7 +92,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.HUGRBOT_PAT }}
           PR_NUMBER: ${{ needs.release.outputs.pr_number }}
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_automerge.py
+        run: uv run --locked --only-group automation python scripts/release_automerge.py
 
   validate:
     needs: release
@@ -117,4 +117,4 @@ jobs:
           GH_TOKEN: ${{ secrets.HUGRBOT_PAT }}
           WORKFLOW_DISPATCH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.release.outputs.tag }}
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/dispatch_release.py
+        run: uv run --locked --only-group automation python scripts/dispatch_release.py

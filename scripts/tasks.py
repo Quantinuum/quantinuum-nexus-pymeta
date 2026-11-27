@@ -2,24 +2,21 @@
 
 import argparse
 import os
-import tomllib
+import subprocess
 from pathlib import Path
 
 from python_matrix import supported_versions
-from uv_pypi import run_uv
 
 ROOT = Path(__file__).resolve().parents[1]
 TEST_KINDS = ["scripts", "package", "integration"]
+# Keep in sync with the hook entries in .pre-commit-config.yaml. Installing only
+# locked wheels from the dev group avoids building anything, because build
+# dependencies are not locked.
+HOOK_RUN = ("run", "--locked", "--only-group", "dev", "--no-build", "--python", "3.12")
 
 
-def tool_requirement(name: str) -> str:
-    config = tomllib.loads((ROOT / "pyproject.toml").read_text())
-    return next(
-        requirement
-        for group in config["dependency-groups"].values()
-        for requirement in group
-        if isinstance(requirement, str) and requirement.startswith(name + "==")
-    )
+def run_uv(*arguments: str) -> None:
+    subprocess.run(["uv", *arguments], check=True)
 
 
 def run_tests(kind: str, versions: list[str]):
@@ -33,21 +30,20 @@ def run_tests(kind: str, versions: list[str]):
         )
     for selected in selected_versions:
         print(f"Running {kind} tests on Python {selected}", flush=True)
-        if kind == "integration":
-            # Integration tests import the SDK, so they run in a fresh environment
-            # with the locked runtime dependencies and the pinned pytest only.
-            environment = ["--locked", "--no-default-groups"]
-        else:
-            environment = ["--no-project"]
-        environment += ["--with", tool_requirement("pytest")]
-        if kind == "scripts":
-            environment += ["--with", tool_requirement("ghapi")]
+        # The locked dev group provides pytest. Integration tests import the SDK, so
+        # they also install the locked runtime dependencies; other tests do not.
+        groups = (
+            ["--no-default-groups", "--group", "dev"]
+            if kind == "integration"
+            else ["--only-group", "dev"]
+        )
         run_uv(
             "run",
             "--isolated",
+            "--locked",
+            *groups,
             "--python",
             selected,
-            *environment,
             "python",
             "-m",
             "pytest",
@@ -69,18 +65,10 @@ if __name__ == "__main__":
         run_tests(args.command, args.versions)
     elif args.command == "hooks-install":
         os.environ.pop("VIRTUAL_ENV", None)
-        run_uv("run", "--locked", "--python", "3.12", "pre-commit", "install")
+        run_uv(*HOOK_RUN, "pre-commit", "install")
     else:
         os.environ.pop("VIRTUAL_ENV", None)
         arguments = (
             args.arguments[1:] if args.arguments[:1] == ["--"] else args.arguments
         )
-        run_uv(
-            "run",
-            "--locked",
-            "--python",
-            "3.12",
-            "pre-commit",
-            "run",
-            *(arguments or ["--all-files"]),
-        )
+        run_uv(*HOOK_RUN, "pre-commit", "run", *(arguments or ["--all-files"]))
