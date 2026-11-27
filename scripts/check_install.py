@@ -2,15 +2,30 @@
 
 import argparse
 import importlib.metadata
+import os
 import subprocess
 import sys
 import tempfile
 import tomllib
 from pathlib import Path
 
-from uv_pypi import run_uv
-
 ROOT = Path(__file__).resolve().parents[1]
+# These checks resolve packages afresh rather than from uv.lock, so they enforce
+# the repository's PyPI-only configuration however the script is launched.
+# Keep in sync with the unexported variables in the justfile.
+SOURCE_VARIABLES = (
+    "UV_ENV_FILE",
+    "UV_NO_CONFIG",
+    "UV_INDEX",
+    "UV_DEFAULT_INDEX",
+    "UV_INDEX_URL",
+    "UV_EXTRA_INDEX_URL",
+    "UV_FIND_LINKS",
+    "UV_NO_INDEX",
+    "UV_INDEX_STRATEGY",
+    "UV_PUBLISH_URL",
+    "UV_PUBLISH_INDEX",
+)
 
 
 def check_installed() -> None:
@@ -32,10 +47,13 @@ def check_installed() -> None:
 
 
 def run(*command: str) -> None:
-    if command[0] == "uv":
-        run_uv(*command[1:])
-    else:
-        subprocess.run(command, cwd=ROOT, check=True)
+    environment = {
+        name: value
+        for name, value in os.environ.items()
+        if name not in SOURCE_VARIABLES
+    }
+    environment["UV_CONFIG_FILE"] = str(ROOT / "uv.toml")
+    subprocess.run(command, cwd=ROOT, env=environment, check=True)
 
 
 def check_distributions() -> None:

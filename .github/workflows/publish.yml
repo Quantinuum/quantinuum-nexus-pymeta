@@ -38,7 +38,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/verify_release.py
+        run: uv run --locked --only-group automation python scripts/verify_release.py
 
   test:
     needs: verify
@@ -83,11 +83,11 @@ jobs:
           with open('pyproject.toml', 'rb') as source:
               assert 'v' + tomllib.load(source)['project']['version'] == os.environ['TAG']
           PY
-          python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_series.py verify-promotion
-          python scripts/uv_pypi.py lock --check
+          uv run --locked --only-group automation python scripts/release_series.py verify-promotion
+          uv lock --check
           export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
-          python scripts/uv_pypi.py build
-          python scripts/uv_pypi.py export --locked --format pylock.toml --no-header --no-default-groups --no-emit-project -o dist/pylock.toml
+          uv build
+          uv export --locked --format pylock.toml --no-header --no-default-groups --no-emit-project -o dist/pylock.toml
       - name: Check out current publication tooling
         uses: actions/checkout@v7
         with:
@@ -101,7 +101,7 @@ jobs:
           TAG: ${{ inputs.tag }}
           RELEASE_SHA: ${{ needs.verify.outputs.sha }}
           DIST_DIR: ${{ github.workspace }}/dist
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/publish_release.py
+        run: uv run --locked --only-group automation python scripts/publish_release.py
       - name: Preserve distributions for PyPI
         if: vars.PYPI_PUBLISH_ENABLED == 'true'
         id: distributions
@@ -140,4 +140,4 @@ jobs:
           path: dist
           digest-mismatch: error
       - name: Publish using PyPI trusted publishing
-        run: python scripts/uv_pypi.py publish --trusted-publishing always --check-url https://pypi.org/simple
+        run: uv publish --trusted-publishing always --check-url https://pypi.org/simple

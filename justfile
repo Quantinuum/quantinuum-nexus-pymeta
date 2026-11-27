@@ -1,8 +1,22 @@
 set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 
-bootstrap-python := if os() == "windows" { "python" } else { "python3" }
-uv := bootstrap-python + " scripts/uv_pypi.py"
-tasks := uv + " run --no-project --isolated --python 3.12 python scripts/tasks.py"
+# Resolve packages only from PyPI: use uv.toml in place of user- and system-level
+# configuration, and ignore index overrides from the environment or a uv dotenv
+# file.
+export UV_CONFIG_FILE := justfile_directory() / "uv.toml"
+unexport UV_ENV_FILE
+unexport UV_NO_CONFIG
+unexport UV_INDEX
+unexport UV_DEFAULT_INDEX
+unexport UV_INDEX_URL
+unexport UV_EXTRA_INDEX_URL
+unexport UV_FIND_LINKS
+unexport UV_NO_INDEX
+unexport UV_INDEX_STRATEGY
+unexport UV_PUBLISH_URL
+unexport UV_PUBLISH_INDEX
+
+tasks := "uv run --no-project --isolated --python 3.12 python scripts/tasks.py"
 
 # List available commands.
 default:
@@ -35,11 +49,15 @@ test-all: test test-package
 
 # Verify that dependency metadata matches uv.lock.
 check-lock:
-    {{uv}} lock --check
+    uv lock --check
+
+# Update uv.lock from PyPI; optional arguments are forwarded to uv lock.
+lock *args:
+    uv lock {{args}}
 
 # Require exact pins, listed in the README, for every Quantinuum package (queries PyPI).
 check-pins:
-    {{uv}} run --no-project --isolated --python 3.12 python scripts/quantinuum_pins.py
+    uv run --no-project --isolated --python 3.12 python scripts/quantinuum_pins.py
 
 # Install the Git pre-commit hook using the persistent project environment.
 hooks-install:

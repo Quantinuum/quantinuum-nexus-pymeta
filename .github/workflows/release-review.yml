@@ -37,4 +37,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           # The account that owns HUGRBOT_PAT and opens release-branch PRs.
           RELEASE_BOT: hugrbot
-        run: python scripts/uv_pypi.py run --locked --only-group automation python scripts/release_review.py
+        run: uv run --locked --only-group automation python scripts/release_review.py
