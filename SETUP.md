@@ -42,8 +42,9 @@ separated by what they check:
   Guppy programs on the Selene emulator, pytket circuits and tket passes on Guppy
   HUGR, lowering to QIR with hugr-qir, guppyft and guppyalgos, Tierkreis workflows,
   and qnexus uploads against a mocked Nexus. It also runs the README examples
-  from the installed packages' metadata; examples and component combinations
-  that fail with the pinned versions are strict `xfail`s explained in
+  from the installed packages' metadata. Component combinations that fail with
+  the pinned versions are strict `xfail`s; these and failing README examples are
+  explained in
   [`tests/integration/reports/2026-11-27-sdk-integration.md`](tests/integration/reports/2026-11-27-sdk-integration.md).
 
 An ordinary `pytest` run selects `tests/scripts/`. Use `pytest tests/package` to

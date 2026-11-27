@@ -5,17 +5,18 @@ Date: 2026-11-27
 Findings from writing `tests/integration/` against the pinned SDK components
 in `pyproject.toml` (quantinuum-nexus 26.1.0). Each failure below is a documented
 example or a combination of components that should work but does not with the
-pinned versions. The corresponding tests are marked `xfail(strict=True)`, so they
-start failing (XPASS) once the issue is fixed and the marker should be removed.
-README examples are read from the installed packages' metadata, so a fix in a
-newly pinned README is picked up without editing the tests.
+pinned versions.
 
-## Failures (xfail)
+## README failures (not tested)
+
+README examples that failed with the pinned versions. They are tracked by the
+upstream issues or fixes below rather than by tests, because a test that kept a
+copy of an old README would not follow later changes to it. The tests run the
+remaining README examples from the installed packages' metadata.
 
 ### 1. selene-sim README: measurements passed to `result()`
 
 - Components: selene-sim 0.3.8 README, guppylang 1.2.3
-- Test: `test_selene_readme_program`
 - Status: open upstream issue
   [Quantinuum/selene#282](https://github.com/Quantinuum/selene/issues/282); the
   README on selene `main` still has this example.
@@ -32,11 +33,11 @@ newly pinned README is picked up without editing the tests.
   `result` is a deprecated alias of `output` that Guppy makes available in every
   `@guppy` function; it is not exported by `guppylang.std.quantum`. Using
   `output` imported from `guppylang.std.builtins` would avoid the deprecation.
+  The selene-sim README tests apply this fix before running the later examples.
 
 ### 2. selene-sim README: `runner.run(..., n_shots=...)`
 
 - Components: selene-sim 0.3.8
-- Test: `test_selene_readme_multi_shot`
 - Status: fixed on selene `main`, which no longer has this example; awaiting a
   selene-sim release after 0.3.8. Mentioned in
   [Quantinuum/selene#282](https://github.com/Quantinuum/selene/issues/282).
@@ -54,7 +55,6 @@ newly pinned README is picked up without editing the tests.
 ### 3. guppyft README: `SteaneBuilder().build(n_blocks=3)`
 
 - Components: guppyft 0.7.0
-- Test: `test_guppyft_readme`
 - Status: fixed on guppyft `main` by
   [Quantinuum/guppyft#578](https://github.com/Quantinuum/guppyft/pull/578);
   awaiting a guppyft release after 0.7.0, so no issue was opened.
@@ -67,6 +67,12 @@ newly pinned README is picked up without editing the tests.
 - Fix: `SteaneBuilder.new(n_blocks=3).build()` (or
   `SteaneBuilder().with_n_blocks(3).build()`). With that change the README
   program encodes and emulates correctly; `test_guppyft.py` covers it.
+
+## Component failures (xfail)
+
+Combinations of components that should work but fail. The tests are marked
+`xfail(strict=True)`, so they start failing (XPASS) once the issue is fixed and
+the marker should be removed.
 
 ### 4. hugr-qir cannot lower guppyft-encoded programs
 
