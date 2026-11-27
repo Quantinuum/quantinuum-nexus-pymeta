@@ -1414,7 +1414,7 @@ requires-dist = [
     { name = "tket", specifier = "==0.15.16" },
     { name = "tket-eccs", specifier = "==0.6.0" },
     { name = "tket-exts", specifier = "==0.14.3" },
-    { name = "zixy", specifier = "==0.4.4" },
+    { name = "zixy", specifier = "==0.4.5" },
 ]
 
 [package.metadata.requires-dev]
@@ -1942,7 +1942,7 @@ wheels = [
 
 [[package]]
 name = "zixy"
-version = "0.4.4"
+version = "0.4.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -1951,19 +1951,20 @@ dependencies = [
     { name = "sympy" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/74/a2/35482415a0925d17edca8856360513c31a2ee145e49c1f79b122ce024519/zixy-0.4.4.tar.gz", hash = "sha256:28ef9d2866d03015f0e8b455f63a1e60f43807154bf3bd42f1e28bfc3cc0d3db", size = 616226, upload-time = "2026-11-23T16:00:14.541Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/22/82/b4e0fff301b26f5958e3ea85ed32352d16d1e1b501f620ba2c0f715f7d5b/zixy-0.4.5.tar.gz", hash = "sha256:d7c37007cbfce1959ff0f96eed78da0ad58626399535a7fb26357bf477654995", size = 616244, upload-time = "2026-11-27T09:25:11.809Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/62/41/2c2b027db1f3ba3dc3d1d3d1b95bd9a8a10f59ccb7bc70dbc7db925870f3/zixy-0.4.4-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:f99b56fa5fce0c1e850cf0f191a98496a26a826c156e5557166364e1614ec22a", size = 1543150, upload-time = "2026-11-23T15:59:52.537Z" },
-    { url = "https://files.pythonhosted.org/packages/c5/9e/121d7bf485b9c04b8fa886eab62ed1b95aadea9d35e013d314d35ac32396/zixy-0.4.4-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:e2c2cc1509213e59fd796ea2bb802518fc90147eeb6e800dd11fb3ccae2a0bfa", size = 1727551, upload-time = "2026-11-23T15:59:54.453Z" },
-    { url = "https://files.pythonhosted.org/packages/77/bc/2082ff17ca3e678e04301db7af9c128d65de214864c93c3717f9760e0111/zixy-0.4.4-cp310-abi3-manylinux_2_28_armv7l.whl", hash = "sha256:7ada36f96d3d4a99c3d4121d774d398a959e951f02cf343b71f71c246271f203", size = 1669076, upload-time = "2026-11-23T15:59:56.27Z" },
-    { url = "https://files.pythonhosted.org/packages/20/a6/9f740732e5cdfa1cb28149e7010492f7dc64957df94b5517236ed16ed3af/zixy-0.4.4-cp310-abi3-manylinux_2_28_i686.whl", hash = "sha256:d8cdc13d94df0b051079e871d415362225647e1cdcba78c73fc9ce4f5b05d196", size = 1838488, upload-time = "2026-11-23T15:59:58.044Z" },
-    { url = "https://files.pythonhosted.org/packages/62/2c/8644378851f3a9880d146a6cde619b2d425260d1f6c6329aeef4f069f256/zixy-0.4.4-cp310-abi3-manylinux_2_28_ppc64le.whl", hash = "sha256:44e790684a772e8156c2c872373942dd58d960cbb18abab214e5bf01ad1f1b25", size = 2000416, upload-time = "2026-11-23T15:59:59.619Z" },
-    { url = "https://files.pythonhosted.org/packages/a3/18/c62b5d66108aaa4092aa93d14b6b785d6452996c8df90912b6d55a4eb158/zixy-0.4.4-cp310-abi3-manylinux_2_28_s390x.whl", hash = "sha256:c678a6d6452e14d394e90bcfb9af7eb19c36c621889a0c62600f2dd7b02196cc", size = 1814689, upload-time = "2026-11-23T16:00:00.993Z" },
-    { url = "https://files.pythonhosted.org/packages/6d/6f/dc97b5b7f8c8c6ffc32c65413687346d9e7462e81cba3de4de53839705aa/zixy-0.4.4-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:38db4dfc6ae59921c3e44ae9d16a3250de788ddcd735c4de8e75dae37df30a2c", size = 1726608, upload-time = "2026-11-23T16:00:02.415Z" },
-    { url = "https://files.pythonhosted.org/packages/d5/ef/a04da37a247d3018ee219218e9430eadcde3043e9c4e0a09be3a4c4e908b/zixy-0.4.4-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:208ec1b2ac62b3504c4a85ff974848e908d7a51ac3d251acf9c99e76256897f4", size = 1906830, upload-time = "2026-11-23T16:00:03.901Z" },
-    { url = "https://files.pythonhosted.org/packages/fe/96/02f6211bd0cdd4346170d49ee6fa39831d1d2b08dc76833469f20570b392/zixy-0.4.4-cp310-abi3-musllinux_1_2_armv7l.whl", hash = "sha256:1179fec65716eb3af13fa3052df818c90be25c3ba81844612c9395820b37c693", size = 1944486, upload-time = "2026-11-23T16:00:05.778Z" },
-    { url = "https://files.pythonhosted.org/packages/70/e1/401a597b4e9f1d3f3a6d45e975bdea01c07bf6ebba24177184a8c9bc8a95/zixy-0.4.4-cp310-abi3-musllinux_1_2_i686.whl", hash = "sha256:c48c852376e9a92b2ea2a7f753388519ee983d77219f546b8c0c0664a8e5697e", size = 1976591, upload-time = "2026-11-23T16:00:07.578Z" },
-    { url = "https://files.pythonhosted.org/packages/9f/92/16246921528b94ed24f8cbd831d77b00a969a032e9bf8b98d957bb0af7b8/zixy-0.4.4-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:623ca19675574e47f8242efd5a92d74ebd4da144efb0f7de5b85027927c8e163", size = 1991795, upload-time = "2026-11-23T16:00:09.293Z" },
-    { url = "https://files.pythonhosted.org/packages/ec/b0/fe416d7250bcf1a5826447812adeff9f1a1cfc6d9bbcf9c1bde647f8a718/zixy-0.4.4-cp310-abi3-win32.whl", hash = "sha256:8693c2b1ab90228e49303a16b6907abe59873a491aff5829e9cc65465338cb80", size = 1304865, upload-time = "2026-11-23T16:00:10.814Z" },
-    { url = "https://files.pythonhosted.org/packages/45/8e/65128f62994283cfe06f6d5d60f11966a04007f245729727bbe522cd1861/zixy-0.4.4-cp310-abi3-win_amd64.whl", hash = "sha256:b66c1eca74a8522d8137d1a0321803783e992165d613471f2389e595a361c6a8", size = 1439036, upload-time = "2026-11-23T16:00:12.954Z" },
+    { url = "https://files.pythonhosted.org/packages/93/9f/787479e7c0d5a715c38a3e6b0966bccbfb153c1fc254df9922c00d05602b/zixy-0.4.5-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:3f8c406e7f3603dd0f94c80bf952eb52871febc2d81da46181e598f90885d3f9", size = 1543195, upload-time = "2026-11-27T09:24:51.167Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/bd/90034681eefd1b964f3f2cfd0cb85f576857f033c29079366803f8bc0975/zixy-0.4.5-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:9d435f69e7b8b14e414d51cde3414c0e574a59329cdc934c9ef9683fab8c18b3", size = 1727580, upload-time = "2026-11-27T09:24:52.798Z" },
+    { url = "https://files.pythonhosted.org/packages/d1/1c/bc5fca3b67bdd80cb7ab97323f3e74f2cd412397021ac510bad351b47bbe/zixy-0.4.5-cp310-abi3-manylinux_2_28_armv7l.whl", hash = "sha256:366363b8e6d695999c1588caa15a41cfeaa3ec89c65fae2dbed91fbe28c9d51e", size = 1669346, upload-time = "2026-11-27T09:24:54.05Z" },
+    { url = "https://files.pythonhosted.org/packages/81/f4/ad54c09b98cc8d749529047835e2ba8c8f2de5bd81e614c5b80b5e0e4dfb/zixy-0.4.5-cp310-abi3-manylinux_2_28_i686.whl", hash = "sha256:6882deb6261d0be8d144059949bc3bd0e86cbd5efd4185b05a86ff16cab3e968", size = 1837599, upload-time = "2026-11-27T09:24:55.897Z" },
+    { url = "https://files.pythonhosted.org/packages/26/32/1f1ee3d0a270b834e962c02937c938ca8d90e75942031f0f14a0dd8c542d/zixy-0.4.5-cp310-abi3-manylinux_2_28_ppc64le.whl", hash = "sha256:17487430b4953ba22d12fde1908352a39e20ff6553dbc61f14d6bee8279f581b", size = 1999738, upload-time = "2026-11-27T09:24:57.119Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/d3/121a3fc94a26cb8c8ae9f018934e0c76f36c8a14414532c8de0fc993a0b8/zixy-0.4.5-cp310-abi3-manylinux_2_28_s390x.whl", hash = "sha256:4a7249bf7219585f72a8e1dd0d99d02f1454a256c21128e4e752ae738f23488f", size = 1814386, upload-time = "2026-11-27T09:24:58.623Z" },
+    { url = "https://files.pythonhosted.org/packages/db/0a/bae23e08237f438d9fae1f7e576423c2f1f775f60e2ae7f64740e4818bd0/zixy-0.4.5-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:8457fec8ffbc860958df7ed4de147fe09efce8ff68325e73fbf0e669cf9619fa", size = 1726289, upload-time = "2026-11-27T09:25:00.629Z" },
+    { url = "https://files.pythonhosted.org/packages/be/9c/bd666806d6e117f0432f86a7cb8d6005f2994a91ae785ad446e35088a674/zixy-0.4.5-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:48a2e314ab468e26648a9a4712fd29bb2ffe68cfbb3980faf8471af628dd312b", size = 1908334, upload-time = "2026-11-27T09:25:02.07Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/74/0ec8406e118a33282ebd3fcb47235e40cd847eadfdfd24b52f404f048627/zixy-0.4.5-cp310-abi3-musllinux_1_2_armv7l.whl", hash = "sha256:78793d2bf186e082e6b274324b7cc2a6f86a782d70f84552a6de0e51be3d372b", size = 1944217, upload-time = "2026-11-27T09:25:03.538Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/21/80a18f752183088e2d123ee4ca4c8de7571806be3fea89ef9c4a0eb90e28/zixy-0.4.5-cp310-abi3-musllinux_1_2_i686.whl", hash = "sha256:4479a1f12943c230d732942bfa71339a668b3e00172ac3f2e3ee5c4e6add3b68", size = 1977210, upload-time = "2026-11-27T09:25:04.886Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/84/8c77d54b286f45ca3f9c9f38493803abeba8a6287f390c6a8c864ec20b43/zixy-0.4.5-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:895b9aa216ca513b2daeb3fa63fd07bedd0b91d314910c822bc10226517f3322", size = 1991403, upload-time = "2026-11-27T09:25:06.286Z" },
+    { url = "https://files.pythonhosted.org/packages/12/25/d5d49205a1a1bb8f32cdadd909b8d187ee0410b1f036fa92b0398154edd5/zixy-0.4.5-cp310-abi3-pyemscripten_2025_0_wasm32.whl", hash = "sha256:aa3ae878295a57667b6020f57f7b3b078b63d82d3e1b7ef390ee3d8180191fd3", size = 938053, upload-time = "2026-11-27T09:25:07.511Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/6f/6df3ebc5e5aa783df8a4817b2b894fd0ca1d9406c27afa204bda3692a6f8/zixy-0.4.5-cp310-abi3-win32.whl", hash = "sha256:531726889995d8bc1d66a7ad77a7c88f03b4ffe97402f729fe9ef74128e22967", size = 1304781, upload-time = "2026-11-27T09:25:08.885Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/53/1cc90e13c3e6221de345f9349f4da873f12dc1bd7f315b2ee90da6cfd57b/zixy-0.4.5-cp310-abi3-win_amd64.whl", hash = "sha256:07fc7ce60a0c6539fc67ad45b3c741ae68eb67e3afdc31b8e9bf23df971d86b9", size = 1439056, upload-time = "2026-11-27T09:25:10.255Z" },
 ]
