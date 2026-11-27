@@ -9,8 +9,9 @@ from python_matrix import supported_versions
 
 ROOT = Path(__file__).resolve().parents[1]
 # Keep in sync with the hook entries in .pre-commit-config.yaml. Installing only
-# the dev group avoids building the project, whose build backend is not locked.
-HOOK_RUN = ("run", "--locked", "--only-group", "dev", "--python", "3.12")
+# locked wheels from the dev group avoids building anything, because build
+# dependencies are not locked.
+HOOK_RUN = ("run", "--locked", "--only-group", "dev", "--no-build", "--python", "3.12")
 
 
 def run_uv(*arguments: str) -> None:

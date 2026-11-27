@@ -2,36 +2,37 @@ minimum_pre_commit_version: '4.7.0'
 default_install_hook_types: [pre-commit]
 # Every hook runs a tool from the locked dev dependency group, so hook tools are
 # installed from uv.lock rather than by pre-commit from a package index. Git runs
-# these hooks outside just, so --only-group dev also keeps uv from building the
-# project, whose build backend is not locked. Keep in sync with scripts/tasks.py.
+# these hooks outside just, so --only-group dev and --no-build also keep uv from
+# building the project or any package, because build dependencies are not
+# locked. Keep in sync with scripts/tasks.py.
 repos:
   - repo: local
     hooks:
       - id: ruff-check
         name: Ruff linter
-        entry: uv run --frozen --only-group dev --python 3.12 ruff check --force-exclude --fix
+        entry: uv run --frozen --only-group dev --no-build --python 3.12 ruff check --force-exclude --fix
         language: system
         types_or: [python, pyi, jupyter]
         require_serial: true
       - id: ruff-format
         name: Ruff formatter
-        entry: uv run --frozen --only-group dev --python 3.12 ruff format --force-exclude
+        entry: uv run --frozen --only-group dev --no-build --python 3.12 ruff format --force-exclude
         language: system
         types_or: [python, pyi, jupyter]
         require_serial: true
       - id: trailing-whitespace
         name: Trim trailing whitespace
-        entry: uv run --frozen --only-group dev --python 3.12 trailing-whitespace-fixer --markdown-linebreak-ext=md
+        entry: uv run --frozen --only-group dev --no-build --python 3.12 trailing-whitespace-fixer --markdown-linebreak-ext=md
         language: system
         types: [text]
       - id: end-of-file-fixer
         name: Fix end of files
-        entry: uv run --frozen --only-group dev --python 3.12 end-of-file-fixer
+        entry: uv run --frozen --only-group dev --no-build --python 3.12 end-of-file-fixer
         language: system
         types: [text]
       - id: mixed-line-ending
         name: Normalize line endings to LF
-        entry: uv run --frozen --only-group dev --python 3.12 mixed-line-ending --fix=lf
+        entry: uv run --frozen --only-group dev --no-build --python 3.12 mixed-line-ending --fix=lf
         language: system
         types: [text]
       - id: uv-lock

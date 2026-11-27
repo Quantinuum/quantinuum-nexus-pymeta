@@ -83,8 +83,8 @@ take its place. This is enforced without changing your global settings:
 
 - `uv.lock` records the source of every package, and `--locked` or `--frozen`
   commands install exactly those files whatever indexes are configured. The
-  project's build backend is not locked, so repository commands that only need
-  tools, including the commit hooks, use `--only-group` to avoid building it.
+  project's build backend and other build dependencies are not locked, so the
+  commit hooks use `--only-group dev --no-build` to install only locked wheels.
   `just check-pins` and the **Quantinuum pins** CI check fail if any locked
   package comes from somewhere other than PyPI. In CI, where no other index is
   configured, `uv lock --check` rejects such a lockfile too.
