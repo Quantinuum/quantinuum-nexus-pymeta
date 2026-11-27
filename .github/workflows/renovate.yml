@@ -52,7 +52,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: uv run --locked --only-group automation python scripts/renovate_branches.py
-      - uses: renovatebot/github-action@v47.0.0
+      - uses: renovatebot/github-action@v48.0.0
         with:
           token: ${{ secrets.HUGRBOT_PAT }}
           renovate-version: '45'
