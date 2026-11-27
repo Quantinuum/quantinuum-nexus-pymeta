@@ -49,4 +49,4 @@ repos:
         entry: just check-lock
         language: system
         pass_filenames: false
-        files: '^(pyproject\.toml|uv\.lock|uv\.toml|justfile|\.pre-commit-config\.yaml)$'
+        files: '^(pyproject\.toml|uv\.lock|justfile|\.pre-commit-config\.yaml)$'

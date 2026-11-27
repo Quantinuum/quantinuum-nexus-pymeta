@@ -10,12 +10,12 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-# These checks resolve packages afresh rather than from uv.lock, so they enforce
-# the repository's PyPI-only configuration however the script is launched.
-# Keep in sync with the unexported variables in the justfile.
+# These checks resolve packages afresh rather than from uv.lock, so they ignore
+# uv configuration files and index overrides however the script is launched,
+# leaving uv's default index, PyPI. Keep in sync with the justfile.
 SOURCE_VARIABLES = (
     "UV_ENV_FILE",
-    "UV_NO_CONFIG",
+    "UV_CONFIG_FILE",
     "UV_INDEX",
     "UV_DEFAULT_INDEX",
     "UV_INDEX_URL",
@@ -52,7 +52,7 @@ def run(*command: str) -> None:
         for name, value in os.environ.items()
         if name not in SOURCE_VARIABLES
     }
-    environment["UV_CONFIG_FILE"] = str(ROOT / "uv.toml")
+    environment["UV_NO_CONFIG"] = "1"
     subprocess.run(command, cwd=ROOT, env=environment, check=True)
 
 
