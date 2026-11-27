@@ -1,11 +1,11 @@
 set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 
-# Resolve packages only from PyPI, uv's default index: ignore uv configuration
-# files, including user- and system-level ones, and index overrides from the
-# environment or a uv dotenv file. This also skips [tool.uv] in pyproject.toml.
-export UV_NO_CONFIG := "1"
-unexport UV_CONFIG_FILE
+# Resolve packages only from PyPI: use uv.toml in place of user- and system-level
+# configuration, and ignore index overrides from the environment or a uv dotenv
+# file.
+export UV_CONFIG_FILE := justfile_directory() / "uv.toml"
 unexport UV_ENV_FILE
+unexport UV_NO_CONFIG
 unexport UV_INDEX
 unexport UV_DEFAULT_INDEX
 unexport UV_INDEX_URL

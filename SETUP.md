@@ -6,9 +6,9 @@ project, see the [README](README.md#installation).
 
 ## Local development and validation
 
-CI uses uv 0.13.10. `pyproject.toml` requires uv 0.12.22 or later, the first
-version that writes `uv.lock` in its current format, so older versions fail
-before running bare `uv` commands, including the commit hooks.
+CI uses uv 0.13.10. `uv.toml` requires uv 0.12.22 or later, the first version
+that writes `uv.lock` in its current format, so older versions fail before
+running.
 
 Install Python, uv 0.13.10, `just`, and Git, then run:
 
@@ -91,30 +91,26 @@ take its place. This is enforced without changing your global settings:
   commit hooks use `--only-group dev --no-build` to install only locked wheels.
   `just check-pins` and the **Quantinuum pins** CI check fail if any locked
   package or file comes from somewhere other than PyPI. The commit hooks run
-  this check first and stop before installing anything if it fails. In CI,
-  where no other index is configured, `uv lock --check` rejects such a lockfile
-  too.
-- The `just` recipes and the installation tests set `UV_NO_CONFIG`, so uv
-  ignores all configuration files, including user- and system-level ones, and
-  falls back to its default index, PyPI. They also remove index overrides such
-  as `UV_INDEX` and `UV_EXTRA_INDEX_URL` from the environment. Commands that
-  resolve packages afresh, such as `just lock` and the installation tests,
-  therefore use only PyPI. `UV_NO_CONFIG` also skips `[tool.uv]`, so settings
-  there, such as `required-version`, do not apply inside `just` recipes.
-- `[tool.uv]` in `pyproject.toml` lists PyPI as an ordinary rather than default
-  index and selects the `first-index` strategy, so even a bare `uv` command in
-  this checkout prefers PyPI to indexes from user-level configuration. Bare
-  commands still use packages from user-level `find-links`, and environment
-  overrides still take precedence.
+  this check first and stop before installing anything if it fails. In CI, where no other index is
+  configured, `uv lock --check` rejects such a lockfile too.
+- The `just` recipes set `UV_CONFIG_FILE` to `uv.toml`, which replaces user- and
+  system-level uv configuration, and remove index overrides such as `UV_INDEX`
+  and `UV_EXTRA_INDEX_URL` from the environment. Commands that resolve packages
+  afresh, such as `just lock` and the installation tests, therefore use only PyPI.
+- `uv.toml` lists PyPI as an ordinary rather than default index and selects the
+  `first-index` strategy, so even a bare `uv` command in this checkout prefers
+  PyPI to indexes from user-level configuration. Bare commands still merge
+  user-level `find-links`, and environment overrides still take precedence.
 
 Update the lockfile with `just lock` rather than bare `uv lock`. For other
-commands that resolve packages, pass `--no-config` and unset `UV_INDEX`,
-`UV_DEFAULT_INDEX`, `UV_INDEX_URL`, `UV_EXTRA_INDEX_URL`, `UV_FIND_LINKS`,
-`UV_INDEX_STRATEGY`, `UV_CONFIG_FILE`, and `UV_ENV_FILE` if they are set. For
+commands that resolve packages, pass `--config-file uv.toml` and unset
+`UV_INDEX`, `UV_DEFAULT_INDEX`, `UV_INDEX_URL`, `UV_EXTRA_INDEX_URL`,
+`UV_FIND_LINKS`, `UV_INDEX_STRATEGY`, `UV_NO_CONFIG`, and `UV_ENV_FILE` if they
+are set. For
 example, install from this checkout with:
 
 ```sh
-uv --no-config pip install .
+uv --config-file uv.toml pip install .
 ```
 
 A published metapackage cannot control the installer's indexes. For the

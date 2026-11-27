@@ -44,23 +44,6 @@ dev = [
     "ruff==0.17.4",
 ]
 
-[tool.uv]
-# The oldest uv that writes uv.lock with the current version and revision fields,
-# so that older uv versions cannot rewrite the lockfile in an older format.
-required-version = ">=0.12.22"
-# PyPI is listed as an ordinary (not default) index, with the first-index
-# strategy, so that it takes priority over user-level indexes and strategies
-# even when uv merges them into this configuration. The just recipes go further
-# and ignore all uv configuration, which leaves uv's default index, PyPI.
-index-strategy = "first-index"
-
-[[tool.uv.index]]
-name = "pypi"
-url = "https://pypi.org/simple"
-
-[tool.uv.pip]
-index-strategy = "first-index"
-
 [tool.pytest.ini_options]
 testpaths = ["tests/scripts"]
 pythonpath = ["scripts"]
