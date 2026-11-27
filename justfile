@@ -36,6 +36,10 @@ test-scripts version="all":
 test-package version="all":
     {{tasks}} package "{{version}}"
 
+# Test the SDK components together in fresh locked environments; choose all or one minor.
+test-integration version="all":
+    {{tasks}} integration "{{version}}"
+
 # Run pytest without the distribution installation tests; choose all or one minor.
 test-python version="all":
     @just test-scripts "{{version}}"
@@ -44,8 +48,8 @@ test-python version="all":
 test-install version="all":
     @just test-package "{{version}}"
 
-# Run all tests, including fresh distribution installations.
-test-all: test test-package
+# Run all tests, including fresh distribution installations and SDK integration.
+test-all: test test-package test-integration
 
 # Verify that dependency metadata matches uv.lock.
 check-lock:

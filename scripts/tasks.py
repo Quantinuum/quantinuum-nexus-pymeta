@@ -8,6 +8,7 @@ from pathlib import Path
 from python_matrix import supported_versions
 
 ROOT = Path(__file__).resolve().parents[1]
+TEST_KINDS = ["scripts", "package", "integration"]
 # Keep in sync with the hook entries in .pre-commit-config.yaml. Installing only
 # locked wheels from the dev group avoids building anything, because build
 # dependencies are not locked.
@@ -29,13 +30,19 @@ def run_tests(kind: str, versions: list[str]):
         )
     for selected in selected_versions:
         print(f"Running {kind} tests on Python {selected}", flush=True)
-        # The locked dev group provides pytest without the runtime dependencies.
+        # The locked dev group provides pytest. Integration tests import the SDK, so
+        # they also install the locked runtime dependencies and the integration
+        # group; other tests do not.
+        groups = (
+            ["--no-default-groups", "--group", "dev", "--group", "integration"]
+            if kind == "integration"
+            else ["--only-group", "dev"]
+        )
         run_uv(
             "run",
             "--isolated",
             "--locked",
-            "--only-group",
-            "dev",
+            *groups,
             "--python",
             selected,
             "python",
@@ -49,13 +56,13 @@ def run_tests(kind: str, versions: list[str]):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for kind in ["scripts", "package"]:
+    for kind in TEST_KINDS:
         commands.add_parser(kind).add_argument("versions", nargs="*", default=["all"])
     commands.add_parser("hooks-install")
     commands.add_parser("hooks").add_argument("arguments", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     os.chdir(ROOT)
-    if args.command in ["scripts", "package"]:
+    if args.command in TEST_KINDS:
         run_tests(args.command, args.versions)
     elif args.command == "hooks-install":
         os.environ.pop("VIRTUAL_ENV", None)
