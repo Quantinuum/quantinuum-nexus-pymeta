@@ -3,11 +3,11 @@ revision = 5
 requires-python = ">=3.12, <3.15"
 resolution-markers = [
     "python_full_version >= '3.14' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
-    "python_full_version >= '3.14' and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
+    "(python_full_version >= '3.14' and platform_machine != 'x86_64') or (python_full_version >= '3.14' and sys_platform != 'darwin')",
     "python_full_version == '3.13.*' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
-    "python_full_version == '3.13.*' and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
+    "(python_full_version == '3.13.*' and platform_machine != 'x86_64') or (python_full_version == '3.13.*' and sys_platform != 'darwin')",
     "python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
-    "python_full_version < '3.13' and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
+    "(python_full_version < '3.13' and platform_machine != 'x86_64') or (python_full_version < '3.13' and sys_platform != 'darwin')",
 ]
 
 [[package]]
@@ -511,9 +511,9 @@ name = "llvmlite"
 version = "0.50.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.14' and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
-    "python_full_version == '3.13.*' and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
-    "python_full_version < '3.13' and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
+    "(python_full_version >= '3.14' and platform_machine != 'x86_64') or (python_full_version >= '3.14' and sys_platform != 'darwin')",
+    "(python_full_version == '3.13.*' and platform_machine != 'x86_64') or (python_full_version == '3.13.*' and sys_platform != 'darwin')",
+    "(python_full_version < '3.13' and platform_machine != 'x86_64') or (python_full_version < '3.13' and sys_platform != 'darwin')",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/11/c5/907cec40688a34eb489cded74d555e1ee4af8cf49d83e03dba2c2d4cfe27/llvmlite-0.50.0.tar.gz", hash = "sha256:f2a2cd6ec9ffcc1b7147dea0d7a49efebf17a2b434e0c2844fe175999d571eb4", size = 194522, upload-time = "2026-09-29T18:44:46.782Z" }
 wheels = [
@@ -1392,6 +1392,12 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+integration = [
+    { name = "tkr-guppy-worker" },
+    { name = "tkr-nexus-worker" },
+    { name = "tkr-pytket-worker" },
+    { name = "tkr-quantinuum-worker" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -1425,6 +1431,12 @@ dev = [
     { name = "pre-commit-hooks", specifier = "==6.0.0" },
     { name = "pytest", specifier = "==9.2.0" },
     { name = "ruff", specifier = "==0.17.4" },
+]
+integration = [
+    { name = "tkr-guppy-worker", specifier = "==0.3.0" },
+    { name = "tkr-nexus-worker", specifier = "==0.2.1" },
+    { name = "tkr-pytket-worker", specifier = "==0.2.1" },
+    { name = "tkr-quantinuum-worker", specifier = "==0.3.0" },
 ]
 
 [[package]]
@@ -1802,6 +1814,54 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/83/4c/e1cf74b8b98dc903a8ebb3685ce0ed824fd98eaa953408b39623fd944e74/tket_exts-0.14.3.tar.gz", hash = "sha256:5c5bc852c4b8858865bbeefb9adbcda8b34bc105596452a45d4bd498ff5457ea", size = 27826, upload-time = "2026-09-30T16:52:44.791Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c5/bc/515cbe527a61f976b85b07b3aec1b4352129e9b2c168cba2eaca179dfce5/tket_exts-0.14.3-py3-none-any.whl", hash = "sha256:3783aea7af0821b03a79b4a45a1aef6031fd0bb99207ae8c831afb5c88fa8a37", size = 44238, upload-time = "2026-09-30T16:52:43.047Z" },
+]
+
+[[package]]
+name = "tkr-guppy-worker"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tierkreis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/24/85/010fd22f8c18c45a7b98a6f3463ad23ff2fbfad80b43973d4fd5131778fd/tkr_guppy_worker-0.3.0.tar.gz", hash = "sha256:efabaab1f6f0f8225196f3182caf1364b5aaf205e01966bef8f5d99a69fbe88f", size = 2328, upload-time = "2026-11-14T12:13:22.849Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6b/3e/e81740d43d4a9eda071d9caac8f520446fa0567b7ebeead3c1d6cf98ebe7/tkr_guppy_worker-0.3.0-py3-none-any.whl", hash = "sha256:3ca41622b5e3f4269dda9faea36a164d9a4aa96392ede1ca7c90a4663e784afc", size = 1631, upload-time = "2026-11-14T12:13:13.132Z" },
+]
+
+[[package]]
+name = "tkr-nexus-worker"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tierkreis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/84/a1/6399541bede7053644b56b2dccce916763f72a8b76fa8a70f954f3cbde35/tkr_nexus_worker-0.2.1.tar.gz", hash = "sha256:f3e4c5a9390d1ab70cbffd0ec23f508ea2df2295b0a2ab03effa6e0422f2ae39", size = 2437, upload-time = "2026-11-06T15:29:35.864Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4f/e2/c9d20d28e83cd9b7612ea0de77b1ba6d18a0227a573b3170c8c468ad1e55/tkr_nexus_worker-0.2.1-py3-none-any.whl", hash = "sha256:d8424ea41ecb9e1b108bcd87bf55524859913941c4fbd458f40d1a5ec1c6f674", size = 1750, upload-time = "2026-11-06T15:29:27.949Z" },
+]
+
+[[package]]
+name = "tkr-pytket-worker"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tierkreis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7d/aa/cfdf9dc047d313cea7fc9a56a46837ad73a04b832265a3b1de2797a3df22/tkr_pytket_worker-0.2.1.tar.gz", hash = "sha256:fbcf49b36760348cb477c061f44d5e81f32f3ae737b3dd47a26f92a0e6172f80", size = 2611, upload-time = "2026-11-06T15:29:36.763Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/12/4ab6d0b39f2e2a02b166b31f8ce65cdfd3781fa1f975e16eb0c9b6750dd2/tkr_pytket_worker-0.2.1-py3-none-any.whl", hash = "sha256:770fec1cb714bbe4df022337f2788a8664938168d2eabb1c400907a31777a223", size = 1941, upload-time = "2026-11-06T15:29:29.306Z" },
+]
+
+[[package]]
+name = "tkr-quantinuum-worker"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tierkreis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/96/81/fed582387549df26c32fe8ee570fde5fda7fe4e5f14200420ed91b29185c/tkr_quantinuum_worker-0.3.0.tar.gz", hash = "sha256:237ffd487b252e5ddbc09d978f6f67b395be8bcc9010bbd7fe89e3771e0972ed", size = 2157, upload-time = "2026-11-14T12:13:26.499Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5f/10/8fa193eeff1512e192c52fcd90dca82ea132c2a40c388322f65e41c1a5e5/tkr_quantinuum_worker-0.3.0-py3-none-any.whl", hash = "sha256:45c84907908545fed4e605da22c708da54d1c035f360bf2a5b63baf5f4b9e2ad", size = 1546, upload-time = "2026-11-14T12:13:18.768Z" },
 ]
 
 [[package]]

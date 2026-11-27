@@ -49,9 +49,11 @@ separated by what they check:
 
 An ordinary `pytest` run selects `tests/scripts/`. Use `pytest tests/package` to
 select package tests. Integration tests import the SDK, so they run in a fresh
-environment from `uv.lock` with the `dev` group added
-(`uv run --isolated --locked --no-default-groups --group dev`); in the project
-`.venv`, `python -m pytest tests/integration` also works.
+environment from `uv.lock` with the `dev` and `integration` groups added
+(`uv run --isolated --locked --no-default-groups --group dev --group integration`).
+The `integration` group pins the Tierkreis worker interfaces the tests use; after
+`uv sync --group integration`, `python -m pytest tests/integration` also works in
+the project `.venv`.
 The `just` commands run the selected suite across supported Python versions.
 
 `just setup` installs a Git pre-commit hook in this checkout. The hooks run

@@ -101,11 +101,16 @@ the marker should be removed.
 - `tket.passes.NormalizeGuppy` is deprecated in favour of `Normalize`.
 - `quantinuum_schemas` warns that `SeleneConfig(n_qubits=...)` is ignored; the
   qubit count is no longer part of the Nexus Selene configuration.
-- Tierkreis ships typed stubs for its `guppy_worker`, `pytket_worker`,
+- tierkreis 3.1.0 ships typed stubs for its `guppy_worker`, `pytket_worker`,
   `nexus_worker`, and `quantinuum_worker`, but not the workers themselves. A
   workflow using them can be built and saved, but fails at runtime unless the
-  workers are deployed separately. The tests check the stubs' SDK types exist in
-  the pinned packages and run a built-in workflow end to end.
+  workers are deployed separately. The stubs are removed from tierkreis after
+  3.1.0 ([Quantinuum/tierkreis#843](https://github.com/Quantinuum/tierkreis/pull/843))
+  in favour of the identical `tkr-guppy-worker`, `tkr-nexus-worker`,
+  `tkr-pytket-worker`, and `tkr-quantinuum-worker` packages, which are not part of
+  the metapackage. The tests install these from the `integration` dependency
+  group, check that their SDK types exist in the pinned packages, and run a
+  built-in workflow end to end.
 - guppyalgos' Cuccaro adder uses non-Clifford Toffoli decompositions, so it
   needs Selene's statevector simulator; Stim rejects its `RZ(pi/4)` gates. This
   is expected behaviour.

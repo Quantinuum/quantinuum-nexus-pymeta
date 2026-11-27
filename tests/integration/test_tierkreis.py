@@ -7,17 +7,16 @@ from pathlib import Path
 from typing import NamedTuple
 
 import pytest
-import tierkreis
+from guppy_worker import from_circuit, normalize
+from nexus_worker import upload_hugr
+from pytket_worker import from_qasm2_str
 from tierkreis.builder import Graph
 from tierkreis.builtins import iadd, itimes
-from tierkreis.guppy_worker import from_circuit, normalize
 from tierkreis.models import TKR, OpaqueType
-from tierkreis.nexus_worker import upload_hugr
-from tierkreis.pytket_worker import from_qasm2_str
 from tierkreis.runtime import new_in_memory
 
-# Generated worker stubs that exchange SDK objects (circuits, HUGR packages,
-# backend configs, results) between workflow nodes.
+# Worker interfaces, from the tkr-*-worker packages, that exchange SDK objects
+# (circuits, HUGR packages, backend configs, results) between workflow nodes.
 SDK_WORKERS = [
     "guppy_worker",
     "nexus_worker",
@@ -79,9 +78,7 @@ def test_workflow_across_sdk_workers_builds_and_saves():
 
 
 def opaque_types(worker):
-    source = (Path(tierkreis.__file__).parent / f"{worker}.py").read_text(
-        encoding="utf-8"
-    )
+    source = Path(importlib.import_module(worker).__file__).read_text(encoding="utf-8")
     return sorted(set(re.findall(r'OpaqueType\["([\w.]+)"\]', source)))
 
 

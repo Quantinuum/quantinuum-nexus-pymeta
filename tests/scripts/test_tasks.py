@@ -54,7 +54,8 @@ def test_integration_tests_run_in_fresh_locked_sdk_environments(monkeypatch):
         assert {"--isolated", "--locked", "--no-default-groups"} <= set(call)
         assert "--no-project" not in call
         assert "--only-group" not in call
-        assert call[call.index("--group") + 1] == "dev"
+        groups = [call[i + 1] for i, arg in enumerate(call) if arg == "--group"]
+        assert groups == ["dev", "integration"]
     assert all(call[-1] == "tests/integration" for call in calls)
 
 

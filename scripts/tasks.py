@@ -31,9 +31,10 @@ def run_tests(kind: str, versions: list[str]):
     for selected in selected_versions:
         print(f"Running {kind} tests on Python {selected}", flush=True)
         # The locked dev group provides pytest. Integration tests import the SDK, so
-        # they also install the locked runtime dependencies; other tests do not.
+        # they also install the locked runtime dependencies and the integration
+        # group; other tests do not.
         groups = (
-            ["--no-default-groups", "--group", "dev"]
+            ["--no-default-groups", "--group", "dev", "--group", "integration"]
             if kind == "integration"
             else ["--only-group", "dev"]
         )
